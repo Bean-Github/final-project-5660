@@ -1,3 +1,5 @@
+import { getDevice } from './gpuDevice';
+
 export default abstract class Drawable {
   count = 0;
 
@@ -5,15 +7,16 @@ export default abstract class Drawable {
   private normalBuffer?: GPUBuffer;
   private indexBuffer?: GPUBuffer;
 
-  abstract create(device: GPUDevice): void;
+  abstract create(): void;
 
   protected upload(
-    device: GPUDevice,
     positions: Float32Array,
     normals: Float32Array,
     indices: Uint32Array,
   ): void {
     this.destroy();
+
+    const device = getDevice();
 
     this.positionBuffer = device.createBuffer({
       size: positions.byteLength,
@@ -58,3 +61,4 @@ export default abstract class Drawable {
     this.indexBuffer = undefined;
   }
 }
+

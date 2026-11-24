@@ -17,7 +17,8 @@ class Icosphere extends Drawable {
     this.center = vec4.fromValues(center[0], center[1], center[2], 1);
   }
 
-    create(device: GPUDevice) {
+    create() {
+
     const X = 0.525731112119133606;
     const Z = 0.850650808352039932;
     const N = 0;
@@ -161,7 +162,7 @@ class Icosphere extends Drawable {
     this.normals = new Float32Array(this.buffer, normalByteOffset, vertices.length * 4);
     this.positions = new Float32Array(this.buffer, positionByteOffset, vertices.length * 4);
 
-    this.upload(device, this.positions, this.normals, this.indices);
+    this.upload(this.positions, this.normals, this.indices);
 
     console.log(`Created icosphere with ${vertices.length} vertices`);
   }

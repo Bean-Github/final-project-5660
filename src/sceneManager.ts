@@ -6,6 +6,9 @@ import * as DAT from 'dat.gui';
 import Camera from './Camera';
 import Icosphere from './geometry/Icosphere';
 import shaderSource from './shaders/lambert.wgsl?raw';
+import { setDevice } from './rendering/gpuDevice';
+import ObjectManager from './ObjectManager';
+import BallGO from './gameobjects/BallGO'
 
 export async function startScene(
   canvas: HTMLCanvasElement,
@@ -23,6 +26,8 @@ export async function startScene(
     device.destroy();
     return () => {};
   }
+
+  setDevice(device);
 
   const context = canvas.getContext('webgpu');
   if (!context) {
@@ -91,26 +96,29 @@ export async function startScene(
     );
 
   const controls = {
-    tesselations: 5,
-    'Load Scene': () => rebuildSphere(),
+    // tesselations: 5,
+    // 'Load Scene': () => rebuildSphere(),
   };
 
-  let sphere = new Icosphere(
-    vec3.fromValues(0, 0, 0),
-    1,
-    controls.tesselations,
-  );
-  sphere.create(device);
+  // let sphere = new Icosphere(
+  //   vec3.fromValues(0, 0, 0),
+  //   1,
+  //   5,
+  // );
+  //sphere.create();
 
-  function rebuildSphere() {
-    sphere.destroy();
-    sphere = new Icosphere(
-      vec3.fromValues(0, 0, 0),
-      1,
-      controls.tesselations,
-    );
-    sphere.create(device);
-  }
+  // function rebuildSphere() {
+  //   sphere.destroy();
+  //   sphere = new Icosphere(
+  //     vec3.fromValues(0, 0, 0),
+  //     1,
+  //     controls.tesselations,
+  //   );
+  //   sphere.create(device);
+  // }
+
+  const objectManager = new ObjectManager();
+  objectManager.add(new BallGO(vec3.fromValues(0, 0, 0)));
 
   const stats = new Stats();
   stats.showPanel(0);
@@ -120,10 +128,10 @@ export async function startScene(
   document.body.appendChild(stats.dom);
 
   const gui = new DAT.GUI();
-  gui.add(controls, 'tesselations', 0, 8)
-    .step(1)
-    .onFinishChange(rebuildSphere);
-  gui.add(controls, 'Load Scene');
+  // gui.add(controls, 'tesselations', 0, 8)
+  //   .step(1)
+  //   .onFinishChange(rebuildSphere);
+  //gui.add(controls, 'Load Scene');
 
   let depthTexture: GPUTexture | undefined;
   let frameId = 0;
@@ -178,13 +186,16 @@ export async function startScene(
 
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindGroup);
-    sphere.draw(pass);
+    //sphere.draw(pass);
+
+    objectManager.draw(pass);
+
     pass.end();
 
     device.queue.submit([encoder.finish()]);
 
     stats.end();
-    frameId = requestAnimationFrame(tick);
+    frameId = requestAnimationFrame(tick); // this asks the browser to call tick() again when it's time to render a new frame
   }
 
   window.addEventListener('resize', resize);
@@ -195,9 +206,11 @@ export async function startScene(
     cancelAnimationFrame(frameId);
     window.removeEventListener('resize', resize);
     gui.destroy();
-    stats.domElement.remove();
+    stats.dom.remove();
+    
+    objectManager.destroyAll();
 
-    sphere.destroy();
+    //sphere.destroy();
     depthTexture?.destroy();
     uniformBuffer.destroy();
     device.destroy();

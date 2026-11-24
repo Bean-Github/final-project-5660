@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { startScene } from './startScene';
+import { startScene } from './sceneManager';
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,3 +33,4 @@ export default function App() {
     />
   );
 }
+
