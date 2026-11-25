@@ -1,6 +1,7 @@
 import { mat4 } from 'gl-matrix';
 import GameObject from './GameObject';
 import { getDevice } from './rendering/gpuDevice';
+import { getViewProj } from './rendering/cameraRef'
 
 type ObjectRenderData = {
   uniformBuffer: GPUBuffer;
@@ -20,8 +21,6 @@ export default class ObjectManager {
 
   add<T extends GameObject>(object: T): T {
     if (this.objects.has(object)) return object;
-
-    object.start(); // Remove this line if BallGO's constructor already calls start().
 
     const uniformBuffer = this.device.createBuffer({
       size: 36 * 4, // model matrix + viewProj matrix + color
@@ -44,7 +43,8 @@ export default class ObjectManager {
     }
   }
 
-  draw(pass: GPURenderPassEncoder, viewProj: mat4): void {
+  draw(pass: GPURenderPassEncoder): void {
+    const viewProj = getViewProj();
     for (const object of this.objects) {
       const renderData = this.renderData.get(object);
       if (!renderData) continue;

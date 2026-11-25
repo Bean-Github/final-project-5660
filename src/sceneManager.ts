@@ -8,6 +8,7 @@ import shaderSource from './shaders/lambert.wgsl?raw';
 import { setDevice } from './rendering/gpuDevice';
 import ObjectManager from './ObjectManager';
 import BallGO from './gameobjects/BallGO'
+import { setCamera } from './rendering/cameraRef';
 
 export async function startScene(
   canvas: HTMLCanvasElement,
@@ -75,24 +76,13 @@ export async function startScene(
     },
   });
 
-  // 16 floats for model + 16 for viewProj + 4 for color.
-  // const uniformBuffer = device.createBuffer({
-  //   size: 36 * 4,
-  //   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  // });
-
-  // const bindGroup = device.createBindGroup({
-  //   layout: pipeline.getBindGroupLayout(0),
-  //   entries: [
-  //     { binding: 0, resource: { buffer: uniformBuffer } },
-  //   ],
-  // });
-
   const camera = new Camera(
     canvas,
     vec3.fromValues(0, 0, 5),
     vec3.fromValues(0, 0, 0),
-    );
+  );
+
+  setCamera(camera);
 
   const controls = {
     // tesselations: 5,
@@ -145,18 +135,10 @@ export async function startScene(
     previousTime = currTime;
     
     stats.begin();
-    camera.update();
+
+    // UPDATE
+    camera.update(dt);
     objectManager.update(dt);
-
-    // const model = mat4.create();
-    const viewProj = mat4.create();
-    mat4.multiply(viewProj, camera.projectionMatrix, camera.viewMatrix);
-
-    // const uniforms = new Float32Array(36);
-    // uniforms.set(model, 0);
-    // uniforms.set(viewProj, 16);
-    // uniforms.set([1, 0, 0, 1], 32); // Red sphere
-    // device.queue.writeBuffer(uniformBuffer, 0, uniforms);
 
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass({
@@ -175,9 +157,9 @@ export async function startScene(
     });
 
     pass.setPipeline(pipeline);
-    // pass.setBindGroup(0, bindGroup);
 
-    objectManager.draw(pass, viewProj);
+    // DRAW
+    objectManager.draw(pass);
 
     pass.end();
 

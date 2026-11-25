@@ -13,6 +13,7 @@ export default abstract class GameObject {
 
   constructor(position: vec3) {
     this.position = vec3.clone(position);
+    this.start();
   }
 
   abstract start(): void;

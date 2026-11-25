@@ -25,6 +25,11 @@ export default class BallGO extends GameObject {
     }
 
     override update(dt: number): void {
+        // vec3.add(
+        //     this.position,                  // Where to store the result
+        //     this.position,                  // Current position
+        //     vec3.fromValues(dt, 0, 0),     // Movement
+        // );
 
     }
 
