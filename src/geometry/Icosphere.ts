@@ -1,11 +1,13 @@
 import {vec3, vec4} from 'gl-matrix';
 import Drawable from '../rendering/Drawable';
 
+// this was taken from the fireball hw source code, modified to work with webGPU
 class Icosphere extends Drawable {
   buffer!: ArrayBuffer;
   indices!: Uint32Array;
   positions!: Float32Array;
   normals!: Float32Array;
+  uvs!: Float32Array;
   radius: number;
   subdivisions: number;
   center: vec4;
@@ -32,7 +34,8 @@ class Icosphere extends Drawable {
     const buffer0 = new ArrayBuffer(
       maxIndexCount * 3 * Uint32Array.BYTES_PER_ELEMENT +
       maxVertexCount * 4 * Float32Array.BYTES_PER_ELEMENT +
-      maxVertexCount * 4 * Float32Array.BYTES_PER_ELEMENT
+      maxVertexCount * 4 * Float32Array.BYTES_PER_ELEMENT +
+      maxVertexCount * 2 * Float32Array.BYTES_PER_ELEMENT
     );
     const buffer1 = new ArrayBuffer(
       maxIndexCount * 3 * Uint32Array.BYTES_PER_ELEMENT
@@ -41,10 +44,14 @@ class Icosphere extends Drawable {
     let b = 0;
 
     const indexByteOffset = 0;
-    const vertexByteOffset = maxIndexCount * 3 * Uint32Array.BYTES_PER_ELEMENT;
+    const vertexByteOffset =
+      maxIndexCount * 3 * Uint32Array.BYTES_PER_ELEMENT;
     const normalByteOffset = vertexByteOffset;
-    const positionByteOffset = vertexByteOffset + maxVertexCount * 4 * Float32Array.BYTES_PER_ELEMENT;
-
+    const positionByteOffset =
+      normalByteOffset + maxVertexCount * 4 * Float32Array.BYTES_PER_ELEMENT;
+    const uvByteOffset =
+      positionByteOffset + maxVertexCount * 4 * Float32Array.BYTES_PER_ELEMENT;
+    
     // Create 3-uint buffer views into the backing buffer to represent triangles
     // The C++ analogy to this would be something like:
     // triangles[i] = reinterpret_cast<std::array<unsigned int, 3>*>(&buffer[offset]);
@@ -161,8 +168,9 @@ class Icosphere extends Drawable {
     this.indices = new Uint32Array(this.buffer, indexByteOffset, triangles.length * 3);
     this.normals = new Float32Array(this.buffer, normalByteOffset, vertices.length * 4);
     this.positions = new Float32Array(this.buffer, positionByteOffset, vertices.length * 4);
+    this.uvs = new Float32Array(this.buffer, uvByteOffset, vertices.length * 2);
 
-    this.upload(this.positions, this.normals, this.indices);
+    this.upload(this.positions, this.normals, this.indices, this.uvs);
 
     console.log(`Created icosphere with ${vertices.length} vertices`);
   }

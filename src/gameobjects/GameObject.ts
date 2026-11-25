@@ -1,7 +1,8 @@
 /// <reference types="@webgpu/types" />
 
 import { vec3, mat4 } from 'gl-matrix';
-import type Drawable from './rendering/Drawable';
+import type Drawable from '../rendering/Drawable';
+import type Material from '../materials/Material';
 
 export default abstract class GameObject {
   position: vec3;
@@ -9,7 +10,15 @@ export default abstract class GameObject {
   rotationY = 0;
   rotationZ = 0;
 
+  color: vec3 = vec3.fromValues(1, 1, 1);
+
   drawable: Drawable | null = null;
+
+  material: Material | null = null;
+
+  setMaterial(material: Material): void {
+    this.material = material;
+  }
 
   constructor(position: vec3) {
     this.position = vec3.clone(position);
@@ -18,6 +27,10 @@ export default abstract class GameObject {
 
   abstract start(): void;
   abstract update(dt: number): void;
+
+  setColor(color: vec3): void {
+    this.color = vec3.clone(color);
+  }
 
   draw(pass: GPURenderPassEncoder): void
   {

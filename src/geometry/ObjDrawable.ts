@@ -1,7 +1,7 @@
 import Drawable from '../rendering/Drawable';
 
 type Point = [number, number, number];
-type Corner = { position: Point; normal?: Point };
+type Corner = { position: Point; normal?: Point; uv?: [number, number] };
 
 export default class ObjDrawable extends Drawable {
   private readonly source: string;
@@ -14,10 +14,12 @@ export default class ObjDrawable extends Drawable {
   create(): void {
     const sourcePositions: Point[] = [];
     const sourceNormals: Point[] = [];
+    const sourceUVs: [number, number][] = [];
 
     const positions: number[] = [];
     const normals: number[] = [];
     const indices: number[] = [];
+    const uvs: number[] = [];
 
     function resolveIndex(text: string, length: number): number {
       const index = Number(text);
@@ -35,7 +37,7 @@ export default class ObjDrawable extends Drawable {
 
     function parseCorner(text: string): Corner {
       // Possible forms: v, v/vt, v//vn, v/vt/vn
-      const [positionIndex, , normalIndex] = text.split('/');
+      const [positionIndex, uvIndex, normalIndex] = text.split('/');
 
       const position =
         sourcePositions[resolveIndex(positionIndex, sourcePositions.length)];
@@ -44,7 +46,9 @@ export default class ObjDrawable extends Drawable {
         ? sourceNormals[resolveIndex(normalIndex, sourceNormals.length)]
         : undefined;
 
-      return { position, normal };
+      const uv = uvIndex ? sourceUVs[resolveIndex(uvIndex, sourceUVs.length)] : undefined;
+      
+      return { position, normal, uv };
     }
 
     function faceNormal(a: Point, b: Point, c: Point): Point {
@@ -70,6 +74,7 @@ export default class ObjDrawable extends Drawable {
         positions.push(p[0], p[1], p[2], 1);
         normals.push(n[0], n[1], n[2], 0);
         indices.push(indices.length);
+        uvs.push(corner.uv ? corner.uv[0] : 0, corner.uv ? corner.uv[1] : 0);
       }
     }
 
@@ -98,6 +103,8 @@ export default class ObjDrawable extends Drawable {
         for (let i = 1; i < corners.length - 1; i++) {
           addTriangle(corners[0], corners[i], corners[i + 1]);
         }
+      } else if (kind === 'vt' && values.length >= 2) {
+        sourceUVs.push([Number(values[0]), 1 - Number(values[1])]);
       }
     }
 
@@ -109,6 +116,7 @@ export default class ObjDrawable extends Drawable {
       new Float32Array(positions),
       new Float32Array(normals),
       new Uint32Array(indices),
+      new Float32Array(uvs)
     );
   }
 }

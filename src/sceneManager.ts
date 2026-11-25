@@ -7,8 +7,8 @@ import Camera from './Camera';
 import shaderSource from './shaders/lambert.wgsl?raw';
 import { setDevice } from './rendering/gpuDevice';
 import ObjectManager from './ObjectManager';
-import BallGO from './gameobjects/BallGO'
 import { setCamera } from './rendering/cameraRef';
+import SampleScene from './scenes/SampleScene';
 
 export async function startScene(
   canvas: HTMLCanvasElement,
@@ -58,6 +58,10 @@ export async function startScene(
             { shaderLocation: 1, offset: 0, format: 'float32x4' },
           ],
         },
+        {
+          arrayStride: 8,
+          attributes: [{ shaderLocation: 2, offset: 0, format: 'float32x2' }],
+        },
       ],
     },
     fragment: {
@@ -90,7 +94,9 @@ export async function startScene(
   };
 
   const objectManager = new ObjectManager(pipeline);
-  objectManager.add(new BallGO(vec3.fromValues(0, 0, 0)));
+  const scene = new SampleScene(objectManager);
+  
+  await scene.setupScene(objectManager, device, pipeline);
 
   const stats = new Stats();
   stats.showPanel(0);

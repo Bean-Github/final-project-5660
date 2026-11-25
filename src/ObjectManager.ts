@@ -1,5 +1,5 @@
 import { mat4 } from 'gl-matrix';
-import GameObject from './GameObject';
+import GameObject from './gameobjects/GameObject';
 import { getDevice } from './rendering/gpuDevice';
 import { getViewProj } from './rendering/cameraRef'
 
@@ -34,6 +34,7 @@ export default class ObjectManager {
 
     this.objects.add(object);
     this.renderData.set(object, { uniformBuffer, bindGroup });
+
     return object;
   }
 
@@ -52,7 +53,7 @@ export default class ObjectManager {
       const uniforms = new Float32Array(36);
       uniforms.set(object.getModelMatrix(), 0); // This object's transform
       uniforms.set(viewProj, 16);               // Shared camera transform
-      uniforms.set([1, 0, 0, 1], 32);           // Red
+      uniforms.set(object.color, 32);           // Color
 
       this.device.queue.writeBuffer(
         renderData.uniformBuffer,
@@ -61,6 +62,11 @@ export default class ObjectManager {
       );
 
       pass.setBindGroup(0, renderData.bindGroup);
+
+      if (object.material) {
+        pass.setBindGroup(1, object.material.bindGroup);
+      }
+
       object.draw(pass);
     }
   }
