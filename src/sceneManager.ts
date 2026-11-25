@@ -4,7 +4,6 @@ import { mat4, vec3 } from 'gl-matrix';
 import Stats from 'stats.js';
 import * as DAT from 'dat.gui';
 import Camera from './Camera';
-import Icosphere from './geometry/Icosphere';
 import shaderSource from './shaders/lambert.wgsl?raw';
 import { setDevice } from './rendering/gpuDevice';
 import ObjectManager from './ObjectManager';
@@ -77,17 +76,17 @@ export async function startScene(
   });
 
   // 16 floats for model + 16 for viewProj + 4 for color.
-  const uniformBuffer = device.createBuffer({
-    size: 36 * 4,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  });
+  // const uniformBuffer = device.createBuffer({
+  //   size: 36 * 4,
+  //   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  // });
 
-  const bindGroup = device.createBindGroup({
-    layout: pipeline.getBindGroupLayout(0),
-    entries: [
-      { binding: 0, resource: { buffer: uniformBuffer } },
-    ],
-  });
+  // const bindGroup = device.createBindGroup({
+  //   layout: pipeline.getBindGroupLayout(0),
+  //   entries: [
+  //     { binding: 0, resource: { buffer: uniformBuffer } },
+  //   ],
+  // });
 
   const camera = new Camera(
     canvas,
@@ -100,24 +99,7 @@ export async function startScene(
     // 'Load Scene': () => rebuildSphere(),
   };
 
-  // let sphere = new Icosphere(
-  //   vec3.fromValues(0, 0, 0),
-  //   1,
-  //   5,
-  // );
-  //sphere.create();
-
-  // function rebuildSphere() {
-  //   sphere.destroy();
-  //   sphere = new Icosphere(
-  //     vec3.fromValues(0, 0, 0),
-  //     1,
-  //     controls.tesselations,
-  //   );
-  //   sphere.create(device);
-  // }
-
-  const objectManager = new ObjectManager();
+  const objectManager = new ObjectManager(pipeline);
   objectManager.add(new BallGO(vec3.fromValues(0, 0, 0)));
 
   const stats = new Stats();
@@ -135,6 +117,7 @@ export async function startScene(
 
   let depthTexture: GPUTexture | undefined;
   let frameId = 0;
+  let previousTime: number | undefined;
 
   function resize() {
     const width = Math.max(1, Math.floor(canvas.clientWidth));
@@ -154,19 +137,26 @@ export async function startScene(
     camera.updateProjectionMatrix();
   }
 
-  function tick() {
-    camera.update();
-    stats.begin();
+  function tick(currTime: number) {
+    const dt = previousTime === undefined
+    ? 0
+    : Math.min((currTime - previousTime) / 1000, 0.05);
 
-    const model = mat4.create();
+    previousTime = currTime;
+    
+    stats.begin();
+    camera.update();
+    objectManager.update(dt);
+
+    // const model = mat4.create();
     const viewProj = mat4.create();
     mat4.multiply(viewProj, camera.projectionMatrix, camera.viewMatrix);
 
-    const uniforms = new Float32Array(36);
-    uniforms.set(model, 0);
-    uniforms.set(viewProj, 16);
-    uniforms.set([1, 0, 0, 1], 32); // Red sphere
-    device.queue.writeBuffer(uniformBuffer, 0, uniforms);
+    // const uniforms = new Float32Array(36);
+    // uniforms.set(model, 0);
+    // uniforms.set(viewProj, 16);
+    // uniforms.set([1, 0, 0, 1], 32); // Red sphere
+    // device.queue.writeBuffer(uniformBuffer, 0, uniforms);
 
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass({
@@ -185,10 +175,9 @@ export async function startScene(
     });
 
     pass.setPipeline(pipeline);
-    pass.setBindGroup(0, bindGroup);
-    //sphere.draw(pass);
+    // pass.setBindGroup(0, bindGroup);
 
-    objectManager.draw(pass);
+    objectManager.draw(pass, viewProj);
 
     pass.end();
 
@@ -200,7 +189,7 @@ export async function startScene(
 
   window.addEventListener('resize', resize);
   resize();
-  tick();
+  tick(0);
 
   return () => {
     cancelAnimationFrame(frameId);
@@ -210,9 +199,7 @@ export async function startScene(
     
     objectManager.destroyAll();
 
-    //sphere.destroy();
     depthTexture?.destroy();
-    uniformBuffer.destroy();
     device.destroy();
   };
 }
