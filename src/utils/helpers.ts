@@ -1,9 +1,8 @@
 import { mat4, vec3 } from 'gl-matrix';
 import { getViewProj } from '../rendering/cameraRef';
-
+import type { Ray } from '../physics/physics';
 
 // random util functions
-
 
 export function randomFloat(min: number, max: number): number {
     return Math.random() * (max - min) + min;
@@ -48,37 +47,6 @@ export function rotateToward(current: vec3, target: vec3, maxAngle: number): vec
 }
 
 // ray intersection things
-
-export type Ray = {
-  origin: vec3;
-  direction: vec3;
-};
-
-export type Intersection = {
-  point: vec3;
-  distance: number;
-};
-
-export function intersectRayPlane(ray: Ray, planePoint: vec3, planeNormal: vec3): Intersection | null {
-  const denom = vec3.dot(planeNormal, ray.direction);
-
-  if (Math.abs(denom) < 1e-6) {
-    return null;
-  }
-
-  const diff = vec3.sub(vec3.create(), planePoint, ray.origin);
-  const t = vec3.dot(diff, planeNormal) / denom;
-
-  if (t < 0) {
-    return null;
-  }
-
-  return {
-    point: vec3.scaleAndAdd(vec3.create(), ray.origin, ray.direction, t),
-    distance: t,
-  };
-}
-
 export function screenToWorldRay(ndcX: number, ndcY: number): Ray {
   const viewProj = getViewProj();
 

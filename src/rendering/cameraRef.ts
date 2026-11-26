@@ -21,3 +21,4 @@ export function clearCamera(camera: Camera): void {
 export function getViewProj(): mat4 {
   return getCamera().getViewProj();
 }
+

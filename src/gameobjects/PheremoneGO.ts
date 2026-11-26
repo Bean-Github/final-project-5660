@@ -12,7 +12,10 @@ type PheremoneType = typeof PheremoneType[keyof typeof PheremoneType];
 export { PheremoneType };
 
 export default class PheremoneGO extends GameObject {
+    private pheremoneLifetime = 300.0; // seconds
+    private currentLifetime = 0.0; // seconds
 
+    
     constructor(position: vec3, type: PheremoneType)
     {
         super(position);
@@ -43,15 +46,11 @@ export default class PheremoneGO extends GameObject {
     }
 
     override update(dt: number): void {
-        // vec3.add(
-        //     this.position,                  // Where to store the result
-        //     this.position,                  // Current position
-        //     vec3.fromValues(dt, 0, 0),     // Movement
-        // );
-
+        this.currentLifetime += dt;
+        if (this.currentLifetime >= this.pheremoneLifetime) {
+            this.destroy();
+        }
     }
-
-
 
 }
 

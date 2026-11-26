@@ -1,6 +1,11 @@
 import { vec3 } from 'gl-matrix';
 import type GameObject from '../gameobjects/GameObject';
-import type { Ray } from '../utils/helpers'; // or move Ray here
+import { getObjectManager } from '../ObjectManager';
+
+export type Ray = {
+  origin: vec3;
+  direction: vec3;
+};
 
 export type RayHit = {
   object: GameObject;
@@ -15,6 +20,26 @@ export type QueryOptions = {
 };
 
 // --- Primitive Intersection Math ---
+
+export function intersectRayPlane(ray: Ray, planePoint: vec3, planeNormal: vec3): { point: vec3; distance: number } | null {
+  const denom = vec3.dot(planeNormal, ray.direction);
+
+  if (Math.abs(denom) < 1e-6) {
+    return null;
+  }
+
+  const diff = vec3.sub(vec3.create(), planePoint, ray.origin);
+  const t = vec3.dot(diff, planeNormal) / denom;
+
+  if (t < 0) {
+    return null;
+  }
+
+  return {
+    point: vec3.scaleAndAdd(vec3.create(), ray.origin, ray.direction, t),
+    distance: t,
+  };
+}
 
 function intersectRaySphere(
   ray: Ray,
@@ -84,13 +109,26 @@ function intersectRayAABB(
 }
 
 // --- Scene Queries ---
+let objects: readonly GameObject[] = [];
+
+function updatePhysicsObjects() {
+    const objectManager = getObjectManager();
+    if (objectManager) {
+        objects = objectManager.getAll();
+    }
+    else {
+        objects = [];
+    }
+}
 
 export function raycast(
-  objects: readonly GameObject[],
   ray: Ray,
   maxDistance = Infinity,
   options: QueryOptions = {},
 ): RayHit | null {
+
+    updatePhysicsObjects();
+
   let closest: RayHit | null = null;
   let closestDist = maxDistance;
 
@@ -116,12 +154,13 @@ export function raycast(
 }
 
 export function sphereCast(
-  objects: readonly GameObject[],
   ray: Ray,
   castRadius: number,
   maxDistance = Infinity,
   options: QueryOptions = {},
 ): RayHit | null {
+    updatePhysicsObjects();
+    
   let closest: RayHit | null = null;
   let closestDist = maxDistance;
 
@@ -168,11 +207,12 @@ export function sphereCast(
 }
 
 export function overlapSphere(
-  objects: readonly GameObject[],
   center: vec3,
   radius: number,
   options: QueryOptions = {},
 ): GameObject[] {
+    updatePhysicsObjects();
+
   const results: GameObject[] = [];
 
   for (const obj of objects) {

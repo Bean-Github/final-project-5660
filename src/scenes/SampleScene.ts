@@ -14,6 +14,7 @@ import FoodGO from '../gameobjects/FoodGO';
 import GroundGO from '../gameobjects/GroundGO';
 
 import * as Helpers from '../utils/helpers';
+import * as Physics from '../physics/physics';
 import { screenToWorldRay } from '../utils/helpers';
 import * as Mouse from '../utils/mouse';
 
@@ -44,8 +45,6 @@ export default class SampleScene extends Scene {
         // make plane
         const ground = new GroundGO(vec3.fromValues(0, 0, 0));
         this.spawnObject(ground);
-
-        
     }
 
     // if you click the ground place a food there
@@ -57,7 +56,7 @@ export default class SampleScene extends Scene {
         {
             const ray = screenToWorldRay(Mouse.pos.ndcX, Mouse.pos.ndcY);
 
-            const intersection = Helpers.intersectRayPlane(ray, vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
+            const intersection = Physics.intersectRayPlane(ray, vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
 
             if (intersection !== null) {
                 // spawn food
