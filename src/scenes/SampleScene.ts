@@ -18,6 +18,7 @@ import * as Physics from '../physics/physics';
 import { screenToWorldRay } from '../utils/helpers';
 import * as Mouse from '../utils/mouse';
 import AntColonyGO from '../gameobjects/AntColonyGO';
+import TextureMaterial from '../materials/TextureMaterial';
 
 
 export default class SampleScene extends Scene {
@@ -30,7 +31,7 @@ export default class SampleScene extends Scene {
         // Implementation for setting up the sample scene
         const antImage = await Helpers.loadBitmap(antColorUrl);
 
-        const antMaterial = new Material(
+        const antMaterial = new TextureMaterial(
             antImage
         );
 

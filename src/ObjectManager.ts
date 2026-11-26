@@ -1,13 +1,14 @@
-import { mat4, vec4 } from 'gl-matrix';
+import { vec4 } from 'gl-matrix';
 import GameObject from './gameobjects/GameObject';
 import { getDevice } from './rendering/gpuDeviceRef';
 import { getViewProj } from './rendering/cameraRef'
 import Material from './materials/Material';
 import type Scene from './scenes/Scene';
-import { getPipeline } from './rendering/gpuRenderPipelineRef';
 
 import { loadBitmap } from './utils/helpers';
 import defaultImageUrl from './assets/default.png';
+import TextureMaterial from './materials/TextureMaterial';
+import { getObjectBindGroupLayout } from './rendering/pipelineConfig';
 
 type ObjectRenderData = {
   uniformBuffer: GPUBuffer;
@@ -35,7 +36,6 @@ export default class ObjectManager {
   private readonly objects = new Set<GameObject>();
   private readonly renderData = new Map<GameObject, ObjectRenderData>();
   private readonly device: GPUDevice;
-  private readonly pipeline: GPURenderPipeline;
 
   lightDir: vec4 = vec4.fromValues(0.5, 0.8, 1.0, 0.0);
 
@@ -43,14 +43,13 @@ export default class ObjectManager {
   defaultMaterial: Material | null = null;
 
   constructor() {
-    this.pipeline = getPipeline();
     this.device = getDevice();
   }
 
   async setupObjectManager(): Promise<void> {
     // Any setup logic for the ObjectManager can go here
     const defaultImage = await loadBitmap(defaultImageUrl);
-    this.defaultMaterial = new Material(
+    this.defaultMaterial = new TextureMaterial(
         defaultImage
     );
   }
@@ -68,7 +67,7 @@ export default class ObjectManager {
     });
 
     const bindGroup = this.device.createBindGroup({
-      layout: this.pipeline.getBindGroupLayout(0),
+      layout: getObjectBindGroupLayout(),
       entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
     });
 
@@ -96,6 +95,8 @@ export default class ObjectManager {
   draw(pass: GPURenderPassEncoder): void {
     const viewProj = getViewProj();
 
+    let currentPipeline: GPURenderPipeline | null = null;
+
     // light direction
     vec4.normalize(this.lightDir, this.lightDir);
 
@@ -115,15 +116,17 @@ export default class ObjectManager {
         uniforms,
       );
       
-      pass.setBindGroup(0, renderData.bindGroup);
+      const material = object.material ?? this.defaultMaterial!;
 
-      if (object.material) {
-        pass.setBindGroup(1, object.material.bindGroup);
+      // switch pipelines if this object uses a different shader/pipeline
+      if (material.pipeline !== currentPipeline) {
+        pass.setPipeline(material.pipeline);
+        currentPipeline = material.pipeline;
       }
-      else
-      {
-        // use a default material
-        pass.setBindGroup(1, this.defaultMaterial!.bindGroup);
+
+      pass.setBindGroup(0, renderData.bindGroup);
+      if (material.bindGroup) {
+        pass.setBindGroup(1, material.bindGroup);
       }
 
       object.draw(pass);

@@ -1,12 +1,10 @@
 /// <reference types="@webgpu/types" />
 
-import { mat4, vec3 } from 'gl-matrix';
+import { vec3 } from 'gl-matrix';
 import Stats from 'stats.js';
 import * as DAT from 'dat.gui';
 import Camera from './Camera';
-import shaderSource from './shaders/lambert.wgsl?raw';
 import { setDevice } from './rendering/gpuDeviceRef';
-import { setPipeline } from './rendering/gpuRenderPipelineRef';
 import ObjectManager, { setObjectManager } from './ObjectManager';
 import { setCamera } from './rendering/cameraRef';
 import { setScene } from './scenes/Scene';
@@ -14,6 +12,7 @@ import SampleScene from './scenes/SampleScene';
 import { initMouseInput, endInputFrame } from './utils/mouse'
 
 import { getTime } from './utils/time';
+import { initPipelineConfig } from './rendering/pipelineConfig';
 
 export async function startScene(
   canvas: HTMLCanvasElement,
@@ -45,54 +44,9 @@ export async function startScene(
   const format = navigator.gpu.getPreferredCanvasFormat();
   context.configure({ device, format });
 
-  const shader = device.createShaderModule({ code: shaderSource });
   const sampleCount = 4;
-
-  const pipeline = device.createRenderPipeline({
-    layout: 'auto',
-    vertex: {
-      module: shader,
-      entryPoint: 'vertexMain',
-      buffers: [
-        {
-          arrayStride: 16,
-          attributes: [
-            { shaderLocation: 0, offset: 0, format: 'float32x4' },
-          ],
-        },
-        {
-          arrayStride: 16,
-          attributes: [
-            { shaderLocation: 1, offset: 0, format: 'float32x4' },
-          ],
-        },
-        {
-          arrayStride: 8,
-          attributes: [{ shaderLocation: 2, offset: 0, format: 'float32x2' }],
-        },
-      ],
-    },
-    fragment: {
-      module: shader,
-      entryPoint: 'fragmentMain',
-      targets: [{ format }],
-    },
-    primitive: {
-      topology: 'triangle-list',
-      cullMode: 'back',
-    },
-    depthStencil: {
-      format: 'depth24plus',
-      depthWriteEnabled: true,
-      depthCompare: 'less',
-    },
-    multisample: { // MSAA
-      count: sampleCount,
-    },
-  });
-
-  setPipeline(pipeline);
-
+  initPipelineConfig(format, sampleCount);
+  
   const camera = new Camera(
     canvas,
     vec3.fromValues(0, 2, 8),
@@ -198,8 +152,6 @@ export async function startScene(
         depthStoreOp: 'store',
       },
     });
-
-    pass.setPipeline(pipeline);
 
     // DRAW
     objectManager.draw(pass);

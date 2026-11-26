@@ -83,7 +83,6 @@ export default class AntGO extends GameObject {
     this.dropPheremone(dt);
     this.handleRandomSteering(dt);
 
-
     if (this.state === AntState.Searching) {
       this.handleSearchSteering(dt);
     } else if (this.state === AntState.Returning) {
@@ -91,7 +90,6 @@ export default class AntGO extends GameObject {
     }
 
     // TODO: handle collision steering
-
     this.updateMovement(dt);
   }
 

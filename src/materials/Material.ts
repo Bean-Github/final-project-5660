@@ -1,49 +1,78 @@
+// materials/Material.ts
 import { getDevice } from '../rendering/gpuDeviceRef';
-import { getPipeline } from '../rendering/gpuRenderPipelineRef';
+import {
+  getCanvasFormat,
+  getObjectBindGroupLayout,
+  getSampleCount,
+  VERTEX_BUFFER_LAYOUTS,
+} from '../rendering/pipelineConfig';
 
-export default class Material {
-  readonly bindGroup: GPUBindGroup;
-  readonly texture: GPUTexture;
+export type PipelineOptions = {
+  cullMode?: GPUCullMode;
+  blend?: GPUBlendState;
+  depthWriteEnabled?: boolean;
+};
 
-  constructor(
-    albedoImage: ImageBitmap,
-  ) {
+export default abstract class Material {
+  private static pipelineCache = new Map<string, GPURenderPipeline>();
+
+  abstract readonly pipeline: GPURenderPipeline;
+  abstract readonly bindGroup: GPUBindGroup | null;
+
+  // this will be called by subclasses to get or create a pipeline 
+  // based on the shader source and options
+
+  // if the material layout / source is unique, we will make a new
+  // pipeline and add to the pipeline cache. Otherwise, just return the
+  // existing pipeline from the cache
+  protected static getOrCreatePipeline(
+    shaderSource: string,
+    materialBindGroupLayout?: GPUBindGroupLayout,
+    options?: PipelineOptions, // by default, cullMode is back, depthWriteEnabled is true, and no blending
+  ): GPURenderPipeline {
+    const cacheKey = `${shaderSource}|${options?.cullMode ?? 'back'}|${options?.depthWriteEnabled ?? true}|${Boolean(options?.blend)}`;
+    const cached = this.pipelineCache.get(cacheKey);
+    if (cached) return cached;
+
     const device = getDevice();
-    const layout = getPipeline().getBindGroupLayout(1);
+    const shader = device.createShaderModule({ code: shaderSource });
+    const layouts = materialBindGroupLayout
+      ? [getObjectBindGroupLayout(), materialBindGroupLayout]
+      : [getObjectBindGroupLayout()];
 
-    this.texture = device.createTexture({
-      size: [albedoImage.width, albedoImage.height],
-      format: 'rgba8unorm',
-      usage: GPUTextureUsage.TEXTURE_BINDING |
-             GPUTextureUsage.COPY_DST |
-             GPUTextureUsage.RENDER_ATTACHMENT,
+    const pipeline = device.createRenderPipeline({
+      layout: device.createPipelineLayout({ bindGroupLayouts: layouts }),
+      vertex: {
+        module: shader,
+        entryPoint: 'vertexMain',
+        buffers: VERTEX_BUFFER_LAYOUTS,
+      },
+      fragment: {
+        module: shader,
+        entryPoint: 'fragmentMain',
+        targets: [{ format: getCanvasFormat(), blend: options?.blend }],
+      },
+      primitive: {
+        topology: 'triangle-list',
+        cullMode: options?.cullMode ?? 'back',
+      },
+      depthStencil: {
+        format: 'depth24plus',
+        depthWriteEnabled: options?.depthWriteEnabled ?? true,
+        depthCompare: 'less',
+      },
+      multisample: { count: getSampleCount() },
     });
-  
-    device.queue.copyExternalImageToTexture(
-      { source: albedoImage },
-      { texture: this.texture },
-      [albedoImage.width, albedoImage.height],
-    );
 
-    const sampler = device.createSampler({
-      magFilter: 'linear',
-      minFilter: 'linear',
-      addressModeU: 'repeat',
-      addressModeV: 'repeat',
-    });
-
-    this.bindGroup = device.createBindGroup({
-      layout,
-      entries: [
-        { binding: 0, resource: this.texture.createView() },
-        { binding: 1, resource: sampler },
-      ],
-    });
+    this.pipelineCache.set(cacheKey, pipeline);
+    return pipeline;
   }
 
-  destroy(): void {
-    this.texture.destroy();
+  static clearCache(): void {
+    this.pipelineCache.clear();
   }
+
+  destroy(): void {}
 }
 
 
