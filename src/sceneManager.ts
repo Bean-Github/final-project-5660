@@ -200,7 +200,7 @@ export async function startScene(
       colorAttachments: [{
         view: msaaTexture!.createView(),
         resolveTarget: context!.getCurrentTexture().createView(),
-        clearValue: { r: 0.2, g: 0.2, b: 0.2, a: 1 },
+        clearValue: { r: 55/255, g: 74/255, b: 30/255, a: 1 },
         loadOp: 'clear',
         storeOp: 'store',
       }],

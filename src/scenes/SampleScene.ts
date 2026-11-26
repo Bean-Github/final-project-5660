@@ -15,6 +15,7 @@ import { screenToWorldRay } from '../utils/helpers';
 import * as Mouse from '../utils/mouse';
 import AntColonyGO from '../gameobjects/AntColonyGO';
 import TextureMaterial from '../materials/TextureMaterial';
+import toonShaderSource from '../shaders/toon.wgsl?raw';
 
 export default class SampleScene extends Scene {
     
@@ -27,7 +28,8 @@ export default class SampleScene extends Scene {
         const antImage = await Helpers.loadBitmap(antColorUrl);
 
         const antMaterial = new TextureMaterial(
-            antImage
+            antImage,
+            toonShaderSource
         );
 
         //const ball = new BallGO(vec3.fromValues(0, 0, 0));

@@ -9,6 +9,7 @@ import { loadBitmap } from './utils/helpers';
 import defaultImageUrl from './assets/default.png';
 import TextureMaterial from './materials/TextureMaterial';
 import { getObjectBindGroupLayout } from './rendering/pipelineConfig';
+import toonShaderSource from './shaders/toon.wgsl?raw';
 
 type ObjectRenderData = {
   uniformBuffer: GPUBuffer;
@@ -37,7 +38,7 @@ export default class ObjectManager {
   private readonly renderData = new Map<GameObject, ObjectRenderData>();
   private readonly device: GPUDevice;
 
-  lightDir: vec4 = vec4.fromValues(0.5, 0.8, 1.0, 0.0);
+  lightDir: vec4 = vec4.fromValues(0.5, 0.8, 0.2, 0.0);
 
   sceneRef: Scene | null = null;
   defaultMaterial: Material | null = null;
@@ -50,7 +51,8 @@ export default class ObjectManager {
     // Any setup logic for the ObjectManager can go here
     const defaultImage = await loadBitmap(defaultImageUrl);
     this.defaultMaterial = new TextureMaterial(
-        defaultImage
+        defaultImage,
+        toonShaderSource
     );
   }
 

@@ -34,12 +34,25 @@ fn vertexMain(
 @fragment
 fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
   let texel = textureSample(albedoTexture, albedoSampler, input.uv);
-  let light = normalize(scene.lightDir.xyz);  // light direction
-  let diffuse = max(dot(normalize(input.normal), light), 0.0);
-  let ambient = 0.2;
-  let lighting = ambient + 0.8 * diffuse;
+  let normal = normalize(input.normal);
+  let light = normalize(scene.lightDir.xyz);
 
-  return vec4f(texel.rgb * scene.color.rgb * lighting,
-               texel.a * scene.color.a);
+  let diffuse = max(dot(normal, light), 0.0);
+
+  var lighting: f32;
+  if (diffuse > 0.7) {
+    lighting = 1.0;   // highlight
+  } else if (diffuse > 0.4) {
+    lighting = 0.75;  // lit
+  } else if (diffuse > 0.15) {
+    lighting = 0.45;  // midtone
+  } else {
+    lighting = 0.2;   // shadow
+  }
+
+  return vec4f(
+    texel.rgb * scene.color.rgb * lighting,
+    texel.a * scene.color.a,
+  );
 }
 

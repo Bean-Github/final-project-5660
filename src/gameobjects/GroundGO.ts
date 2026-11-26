@@ -17,6 +17,9 @@ export default class GroundGO extends GameObject {
         plane.create();
 
         this.drawable = plane;
+        this.tag = 'ground';
+
+        this.setColor(vec3.fromValues(255/255, 188/255, 133/255)); // Set ground color to gray
     }
 
     override start(): void {
