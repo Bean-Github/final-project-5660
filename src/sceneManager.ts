@@ -5,7 +5,8 @@ import Stats from 'stats.js';
 import * as DAT from 'dat.gui';
 import Camera from './Camera';
 import shaderSource from './shaders/lambert.wgsl?raw';
-import { setDevice } from './rendering/gpuDevice';
+import { setDevice } from './rendering/gpuDeviceRef';
+import { setPipeline } from './rendering/gpuRenderPipelineRef';
 import ObjectManager from './ObjectManager';
 import { setCamera } from './rendering/cameraRef';
 import SampleScene from './scenes/SampleScene';
@@ -71,7 +72,7 @@ export async function startScene(
     },
     primitive: {
       topology: 'triangle-list',
-      cullMode: 'none',
+      cullMode: 'back',
     },
     depthStencil: {
       format: 'depth24plus',
@@ -79,6 +80,8 @@ export async function startScene(
       depthCompare: 'less',
     },
   });
+
+  setPipeline(pipeline);
 
   const camera = new Camera(
     canvas,
@@ -95,8 +98,8 @@ export async function startScene(
 
   const objectManager = new ObjectManager(pipeline);
   const scene = new SampleScene(objectManager);
-  
-  await scene.setupScene(objectManager, device, pipeline);
+
+  await scene.setupScene(objectManager);
 
   const stats = new Stats();
   stats.showPanel(0);
@@ -185,6 +188,7 @@ export async function startScene(
     gui.destroy();
     stats.dom.remove();
     
+    scene.destroyScene();
     objectManager.destroyAll();
 
     depthTexture?.destroy();

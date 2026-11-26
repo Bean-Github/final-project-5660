@@ -1,4 +1,4 @@
-import Drawable from '../rendering/Drawable';
+import Drawable from './Drawable';
 
 type Point = [number, number, number];
 type Corner = { position: Point; normal?: Point; uv?: [number, number] };

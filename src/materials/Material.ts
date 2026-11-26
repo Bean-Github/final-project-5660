@@ -1,24 +1,28 @@
+import { getDevice } from '../rendering/gpuDeviceRef';
+import { getPipeline } from '../rendering/gpuRenderPipelineRef';
+
 export default class Material {
   readonly bindGroup: GPUBindGroup;
   readonly texture: GPUTexture;
 
   constructor(
-    device: GPUDevice,
-    layout: GPUBindGroupLayout,
-    image: ImageBitmap,
+    albedoImage: ImageBitmap,
   ) {
+    const device = getDevice();
+    const layout = getPipeline().getBindGroupLayout(1);
+
     this.texture = device.createTexture({
-      size: [image.width, image.height],
+      size: [albedoImage.width, albedoImage.height],
       format: 'rgba8unorm',
       usage: GPUTextureUsage.TEXTURE_BINDING |
              GPUTextureUsage.COPY_DST |
              GPUTextureUsage.RENDER_ATTACHMENT,
     });
-
+  
     device.queue.copyExternalImageToTexture(
-      { source: image },
+      { source: albedoImage },
       { texture: this.texture },
-      [image.width, image.height],
+      [albedoImage.width, albedoImage.height],
     );
 
     const sampler = device.createSampler({
@@ -41,3 +45,5 @@ export default class Material {
     this.texture.destroy();
   }
 }
+
+

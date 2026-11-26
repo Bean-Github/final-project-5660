@@ -5,8 +5,10 @@ import type ObjectManager from '../ObjectManager';
 import Scene, { loadBitmap } from './Scene';
 import BallGO from '../gameobjects/BallGO';
 import Material from '../materials/Material';
-import antmanColorUrl from '../assets/antmancolor.png';
 import AntGO from '../gameobjects/AntGO';
+
+import antmanColorUrl from '../assets/antmancolor.png';
+import antColorUrl from '../assets/antskin.png';
 
 export default class SampleScene extends Scene {
     
@@ -14,24 +16,29 @@ export default class SampleScene extends Scene {
     super(objectManager);
   }
 
-   async setupScene(objectManager: ObjectManager, device: GPUDevice, pipeline: GPURenderPipeline): Promise<void> {
+   async setupScene(objectManager: ObjectManager): Promise<void> {
     // Implementation for setting up the sample scene
-    const image = await loadBitmap(antmanColorUrl);
+    const image = await loadBitmap(antColorUrl);
+
     const material = new Material(
-        device,
-        pipeline.getBindGroupLayout(1),
-        image,
+        image
     );
 
-    const ball = new BallGO(vec3.fromValues(0, 0, 0));
-    ball.setMaterial(material);
+    //const ball = new BallGO(vec3.fromValues(0, 0, 0));
+    //ball.setMaterial(material);
 
-    const ant = new AntGO(vec3.fromValues(1, 0, 0));
+    const ant = new AntGO(vec3.fromValues(0, 0, 0));
     ant.setMaterial(material);
 
-    objectManager.add(ball);
+    ant.setColor(vec3.fromValues(0.7, 0.2, 0.2)); // Set ant color to red
+
+    //objectManager.add(ball);
     objectManager.add(ant);
   }
+
+    destroyScene(): void {
+        
+    }
 }
 
 

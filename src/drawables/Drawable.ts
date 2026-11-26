@@ -1,4 +1,4 @@
-import { getDevice } from './gpuDevice';
+import { getDevice } from '../rendering/gpuDeviceRef';
 
 export default abstract class Drawable {
   count = 0;

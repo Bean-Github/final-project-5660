@@ -1,6 +1,6 @@
-import { mat4 } from 'gl-matrix';
+import { mat4, vec4 } from 'gl-matrix';
 import GameObject from './gameobjects/GameObject';
-import { getDevice } from './rendering/gpuDevice';
+import { getDevice } from './rendering/gpuDeviceRef';
 import { getViewProj } from './rendering/cameraRef'
 
 type ObjectRenderData = {
@@ -8,22 +8,45 @@ type ObjectRenderData = {
   bindGroup: GPUBindGroup;
 };
 
+let activeObjectManager: ObjectManager | null = null;
+
+export function setObjectManager(objectManager: ObjectManager): void {
+  activeObjectManager = objectManager;
+}
+
+export function getObjectManager(): ObjectManager {
+  if (!activeObjectManager) {
+    throw new Error('ObjectManager has not been initialized');
+  }
+  return activeObjectManager;
+}
+
+export function clearObjectManager(objectManager: ObjectManager): void {
+  if (activeObjectManager === objectManager) activeObjectManager = null;
+}
+
 export default class ObjectManager {
   private readonly objects = new Set<GameObject>();
   private readonly renderData = new Map<GameObject, ObjectRenderData>();
   private readonly device: GPUDevice;
   private readonly pipeline: GPURenderPipeline;
 
+  lightDir: vec4 = vec4.fromValues(0.5, 0.8, 1.0, 0.0);
+
   constructor(pipeline: GPURenderPipeline) {
     this.pipeline = pipeline;
     this.device = getDevice();
+  }
+
+  setLightDirection(direction: vec4): void {
+    vec4.normalize(this.lightDir, direction);
   }
 
   add<T extends GameObject>(object: T): T {
     if (this.objects.has(object)) return object;
 
     const uniformBuffer = this.device.createBuffer({
-      size: 36 * 4, // model matrix + viewProj matrix + color
+      size: 40 * 4, // model matrix + viewProj matrix + color + light direction
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -46,21 +69,26 @@ export default class ObjectManager {
 
   draw(pass: GPURenderPassEncoder): void {
     const viewProj = getViewProj();
+
+    // light direction
+    vec4.normalize(this.lightDir, this.lightDir);
+
     for (const object of this.objects) {
       const renderData = this.renderData.get(object);
       if (!renderData) continue;
 
-      const uniforms = new Float32Array(36);
+      const uniforms = new Float32Array(40); // 16 for model, 16 for viewProj, 4 for color, 4 for lightDir
       uniforms.set(object.getModelMatrix(), 0); // This object's transform
       uniforms.set(viewProj, 16);               // Shared camera transform
       uniforms.set(object.color, 32);           // Color
+      uniforms.set(this.lightDir, 36);                // Light direction
 
       this.device.queue.writeBuffer(
         renderData.uniformBuffer,
         0,
         uniforms,
       );
-
+      
       pass.setBindGroup(0, renderData.bindGroup);
 
       if (object.material) {

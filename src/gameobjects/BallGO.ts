@@ -1,7 +1,7 @@
 
 import { vec3 } from 'gl-matrix';
 import GameObject from './GameObject';
-import Icosphere from '../geometry/Icosphere';
+import Icosphere from '../drawables/Icosphere';
 
 
 export default class BallGO extends GameObject {

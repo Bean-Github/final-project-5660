@@ -26,6 +26,10 @@ export default abstract class Scene {
         
   }
 
+  destroyScene(): void
+  {
+  }
+
   
 }
 

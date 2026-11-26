@@ -2,6 +2,7 @@ struct SceneUniforms {
   model: mat4x4<f32>,
   viewProj: mat4x4<f32>,
   color: vec4f,
+  lightDir: vec4f,
 };
 
 @group(0) @binding(0)
@@ -33,9 +34,10 @@ fn vertexMain(
 @fragment
 fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
   let texel = textureSample(albedoTexture, albedoSampler, input.uv);
-  let light = normalize(vec3f(0.5, 0.8, 1.0));
+  let light = normalize(scene.lightDir.xyz);  // light direction
   let diffuse = max(dot(normalize(input.normal), light), 0.0);
-  let lighting = 0.2 + 0.8 * diffuse;
+  let ambient = 0.2;
+  let lighting = ambient + 0.8 * diffuse;
 
   return vec4f(texel.rgb * scene.color.rgb * lighting,
                texel.a * scene.color.a);

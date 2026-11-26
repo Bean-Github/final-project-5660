@@ -1,7 +1,7 @@
 /// <reference types="@webgpu/types" />
 
 import { vec3, mat4 } from 'gl-matrix';
-import type Drawable from '../rendering/Drawable';
+import type Drawable from '../drawables/Drawable';
 import type Material from '../materials/Material';
 
 export default abstract class GameObject {
