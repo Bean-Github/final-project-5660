@@ -10,6 +10,7 @@ import { setPipeline } from './rendering/gpuRenderPipelineRef';
 import ObjectManager from './ObjectManager';
 import { setCamera } from './rendering/cameraRef';
 import SampleScene from './scenes/SampleScene';
+import { initMouseInput, endInputFrame } from './mouse'
 
 export async function startScene(
   canvas: HTMLCanvasElement,
@@ -29,6 +30,8 @@ export async function startScene(
   }
 
   setDevice(device);
+
+  initMouseInput(canvas);
 
   const context = canvas.getContext('webgpu');
   if (!context) {
@@ -91,11 +94,6 @@ export async function startScene(
 
   setCamera(camera);
 
-  const controls = {
-    // tesselations: 5,
-    // 'Load Scene': () => rebuildSphere(),
-  };
-
   const objectManager = new ObjectManager(pipeline);
   const scene = new SampleScene(objectManager);
 
@@ -108,11 +106,21 @@ export async function startScene(
   stats.dom.style.top = '0';
   document.body.appendChild(stats.dom);
 
+  async function restartScene() {
+    scene.destroyScene();
+    objectManager.destroyAll();
+    await scene.setupScene(objectManager);
+  }
+
+  const controls = {
+    // tesselations: 5,
+    'Load Scene': async () => await restartScene(),
+  };
   const gui = new DAT.GUI();
   // gui.add(controls, 'tesselations', 0, 8)
   //   .step(1)
   //   .onFinishChange(rebuildSphere);
-  //gui.add(controls, 'Load Scene');
+  gui.add(controls, 'Load Scene');
 
   let depthTexture: GPUTexture | undefined;
   let frameId = 0;
@@ -148,6 +156,8 @@ export async function startScene(
     // UPDATE
     camera.update(dt);
     objectManager.update(dt);
+    scene.updateScene(dt);
+    endInputFrame();
 
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass({

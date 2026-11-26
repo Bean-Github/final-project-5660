@@ -119,3 +119,4 @@ export default class ObjectManager {
     return [...this.objects];
   }
 }
+

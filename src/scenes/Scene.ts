@@ -12,23 +12,24 @@ export async function loadBitmap(url: string): Promise<ImageBitmap> {
 }
 
 export default abstract class Scene {
-    
+    objectManagerRef: ObjectManager;
+
     constructor(objectManager: ObjectManager) {
-    
+        this.objectManagerRef = objectManager;
     }
 
 
 
 
 
-  async setupScene(objectManager: ObjectManager, device: GPUDevice, pipeline: GPURenderPipeline): Promise<void>
-  {
-        
-  }
+    async setupScene(objectManager: ObjectManager, device: GPUDevice, pipeline: GPURenderPipeline): Promise<void>
+    { }
 
-  destroyScene(): void
-  {
-  }
+    updateScene(dt: number): void
+    { }
+
+    destroyScene(): void
+    { }
 
   
 }
