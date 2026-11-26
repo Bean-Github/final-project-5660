@@ -1,13 +1,9 @@
 /// <reference types="@webgpu/types" />
 
-import { vec3, mat4 } from 'gl-matrix';
+import { vec3, vec2 } from 'gl-matrix';
 import type ObjectManager from '../ObjectManager';
 import Scene from './Scene';
-import Material from '../materials/Material';
-
-import AntGO from '../gameobjects/AntGO';
 import antColorUrl from '../assets/antskin.png';
-import antmanColorUrl from '../assets/antmancolor.png';
 
 import FoodGO from '../gameobjects/FoodGO';
 
@@ -19,7 +15,6 @@ import { screenToWorldRay } from '../utils/helpers';
 import * as Mouse from '../utils/mouse';
 import AntColonyGO from '../gameobjects/AntColonyGO';
 import TextureMaterial from '../materials/TextureMaterial';
-
 
 export default class SampleScene extends Scene {
     
@@ -44,7 +39,7 @@ export default class SampleScene extends Scene {
         colony.spawnAnts(100);
 
         // make plane
-        const ground = new GroundGO(vec3.fromValues(0, 0, 0));
+        const ground = new GroundGO(vec3.fromValues(0, 0, 0), vec2.fromValues(200, 200));
         this.spawnObject(ground);
     }
 

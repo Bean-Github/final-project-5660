@@ -71,21 +71,75 @@ export async function startScene(
   document.body.appendChild(stats.dom);
 
   async function restartScene() {
+    getTime().time = 0;
     scene.destroyScene();
     objectManager.destroyAll();
     await objectManager.setupObjectManager();
     await scene.setupScene();
   }
 
+  let resumeSpeed = 1.0;
+
   const controls = {
-    // tesselations: 5,
-    'Load Scene': async () => await restartScene(),
+    'Reload Scene': async () => await restartScene(),
+    'Simulation Speed': 1.0,
+    togglePause: () => {
+      if (controls['Simulation Speed'] > 0) {
+        resumeSpeed = controls['Simulation Speed'];
+        controls['Simulation Speed'] = 0;
+      } else {
+        controls['Simulation Speed'] = resumeSpeed;
+      }
+
+      updatePauseLabel();
+    },
   };
+
   const gui = new DAT.GUI();
-  // gui.add(controls, 'tesselations', 0, 8)
-  //   .step(1)
-  //   .onFinishChange(rebuildSphere);
-  gui.add(controls, 'Load Scene');
+
+  gui.add(controls, 'Reload Scene');
+
+  const pauseController = gui
+    .add(controls, 'togglePause')
+    .name('Pause Simulation');
+
+  gui.add(controls, 'Simulation Speed', 0, 5)
+    .step(0.1)
+    .listen()
+    .onChange((speed: number) => {
+      if (speed > 0) resumeSpeed = speed;
+      updatePauseLabel();
+    });
+
+  function updatePauseLabel(): void {
+    pauseController.name(
+      controls['Simulation Speed'] === 0
+        ? 'Resume Simulation'
+        : 'Pause Simulation',
+    );
+  }
+
+  function onPausePressed(event: KeyboardEvent): void {
+  if (
+    event.key.toLowerCase() !== 'p' ||
+    event.repeat ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey
+  ) return;
+
+    // Ignore presses while editing GUI inputs or other text fields.
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.matches('input, textarea, select') || target.isContentEditable)
+    ) return;
+
+    event.preventDefault();
+    controls.togglePause();
+  }
+
+  window.addEventListener('keydown', onPausePressed);
 
   let msaaTexture: GPUTexture | undefined;
   let depthTexture: GPUTexture | undefined;
@@ -120,20 +174,25 @@ export async function startScene(
   }
 
   function tick(currTime: number) {
-    const dt = previousTime === undefined
-    ? 0
-    : Math.min((currTime - previousTime) / 1000, 0.05);
+    const realDt = previousTime === undefined
+      ? 0
+      : Math.min((currTime - previousTime) / 1000, 0.05);
 
     previousTime = currTime;
 
-    getTime().time = currTime / 1000;
-    
+    const simDt = realDt * controls['Simulation Speed'];
+
     stats.begin();
 
+    camera.update(realDt);
+    
     // UPDATE    
-    camera.update(dt);
-    objectManager.update(dt);
-    scene.updateScene(dt);
+    if (simDt > 0) {
+      getTime().time += simDt;
+      objectManager.update(simDt);
+    }
+    scene.updateScene(simDt);
+
     endInputFrame();
 
     const encoder = device.createCommandEncoder();
@@ -170,6 +229,7 @@ export async function startScene(
 
   return () => {
     cancelAnimationFrame(frameId);
+    window.removeEventListener('keydown', onPausePressed);
     window.removeEventListener('resize', resize);
     gui.destroy();
     stats.dom.remove();

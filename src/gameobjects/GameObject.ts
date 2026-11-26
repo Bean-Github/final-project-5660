@@ -5,6 +5,7 @@ import type Drawable from '../drawables/Drawable';
 import type Material from '../materials/Material';
 import Scene, { getScene } from '../scenes/Scene';
 import ObjectManager, { getObjectManager } from '../ObjectManager';
+import InstancedMaterial from '../materials/InstancedMaterial';
 
 export type Collider =
   | { type: 'sphere'; radius: number }
@@ -44,7 +45,12 @@ export default abstract class GameObject {
   draw(pass: GPURenderPassEncoder): void
   {
     if (this.drawable) {
-      this.drawable.draw(pass);
+      const instanceCount = 
+        this.material instanceof InstancedMaterial ? this.material.instanceCount : 1;
+      
+      if (instanceCount > 0) {
+        this.drawable.draw(pass, instanceCount);
+      }
     }
   }
 

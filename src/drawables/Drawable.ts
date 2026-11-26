@@ -48,7 +48,7 @@ export default abstract class Drawable {
     this.count = indices.length;
   }
 
-  draw(pass: GPURenderPassEncoder): void {
+  draw(pass: GPURenderPassEncoder, instanceCount: number): void {
     if (!this.positionBuffer || !this.normalBuffer || !this.indexBuffer) {
       return;
     }
@@ -57,7 +57,8 @@ export default abstract class Drawable {
     pass.setVertexBuffer(1, this.normalBuffer);
     pass.setIndexBuffer(this.indexBuffer, 'uint32');
     pass.setVertexBuffer(2, this.uvBuffer);
-    pass.drawIndexed(this.count);
+
+    pass.drawIndexed(this.count, instanceCount);
   }
 
   destroy(): void {

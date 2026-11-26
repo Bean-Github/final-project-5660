@@ -8,7 +8,8 @@ export default class InstancedMaterial extends Material {
   readonly pipeline: GPURenderPipeline;
   readonly bindGroup: GPUBindGroup;
   readonly instanceBuffer: GPUBuffer;
-  readonly instanceCount: number;
+  private readonly floatsPerInstance: number;
+  instanceCount: number;
 
   private static getLayout(): GPUBindGroupLayout {
     if (!this.bindGroupLayout) {
@@ -16,7 +17,7 @@ export default class InstancedMaterial extends Material {
         entries: [
           {
             binding: 0,
-            visibility: GPUShaderStage.VERTEX,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
             buffer: { type: 'read-only-storage' },
           },
         ],
@@ -26,8 +27,9 @@ export default class InstancedMaterial extends Material {
   }
 
   constructor(
-    instanceData: Float32Array, // 20 floats per instance: 16 (mat4) + 4 (color)
+    instanceData: Float32Array,
     instanceCount: number,
+    floatsPerInstance: number = 8,
     shaderSource: string = instancedShader,
     options?: PipelineOptions,
   ) {
@@ -36,6 +38,7 @@ export default class InstancedMaterial extends Material {
     const device = getDevice();
     const layout = InstancedMaterial.getLayout();
     this.instanceCount = instanceCount;
+    this.floatsPerInstance = floatsPerInstance;
     this.pipeline = Material.getOrCreatePipeline(shaderSource, layout, options);
 
     this.instanceBuffer = device.createBuffer({
@@ -50,9 +53,20 @@ export default class InstancedMaterial extends Material {
     });
   }
 
-  updateInstances(instanceData: Float32Array): void {
-    getDevice().queue.writeBuffer(this.instanceBuffer, 0, instanceData);
-  }
+  updateInstances(instanceData: Float32Array, instanceCount: number): void {
+    this.instanceCount = instanceCount;
+    const byteCount = instanceCount * this.floatsPerInstance;
+
+    if (instanceCount === 0) return;
+
+    getDevice().queue.writeBuffer(
+        this.instanceBuffer,
+        0,
+        instanceData,
+        0,
+        byteCount,
+        );
+    }
 
   destroy(): void {
     this.instanceBuffer.destroy();

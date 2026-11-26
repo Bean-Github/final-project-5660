@@ -3,7 +3,7 @@ import GameObject from './GameObject';
 import ObjDrawable from '../drawables/ObjDrawable';
 import antObj from '../assets/ant.obj?raw';
 import { randomFloat } from '../utils/helpers';
-import PheremoneGO, { PheremoneType } from './PheromoneGO';
+import Pheromone, { PheromoneType } from './pheromones/Pheromone';
 import * as Helpers from '../utils/helpers';
 import * as Physics from '../physics/physics';
 import { getTime } from '../utils/time';
@@ -20,8 +20,11 @@ export default class AntGO extends GameObject {
   private state: AntState = AntState.Searching;
   private colony: AntColonyGO | null = null;
 
-  private timeBetweenPheremoneDrops = 0.3; // seconds
-  private timeSinceLastPheremoneDrop = 0.0; // seconds
+  // pheromone drop settings
+  private timeBetweenPheromoneDrops = 0.3; // seconds
+  private timeSinceLastPheromoneDrop = 0.0; // seconds
+  private timeSinceSource = 0;
+  private pheromoneRunOutTime = 15;
 
   // steering movement settings
   private moveSpeed = 3.0; // units per second
@@ -78,9 +81,8 @@ export default class AntGO extends GameObject {
     this.velocity[2] = this.forward[2] * this.moveSpeed;
   }
 
-  override update(dt: number): void {
-    
-    this.dropPheremone(dt);
+  override update(dt: number): void {  
+    this.dropPheromone(dt);
     this.handleRandomSteering(dt);
 
     if (this.state === AntState.Searching) {
@@ -220,7 +222,7 @@ export default class AntGO extends GameObject {
 
         const pheromoneEntries = this.colony!.queryPheromones(
           this.state === 
-            AntState.Searching ? PheremoneType.ReturningFromFood : PheremoneType.LeavingHome,
+            AntState.Searching ? PheromoneType.ReturningFromFood : PheromoneType.LeavingHome,
           this.sensors[i], 1.0
         );
 
@@ -258,11 +260,14 @@ export default class AntGO extends GameObject {
     this.state = AntState.Searching;
     this.nextDirUpdateTime = 0;
     vec3.set(this.pheromoneSteerForce, 0, 0, 0);
+    this.timeSinceSource = 0;
     this.startTurnAround();
   }
 
   private switchToReturning(): void {
     this.state = AntState.Returning;
+    this.timeSinceSource = 0;
+    this.nextDirUpdateTime = 0;
     this.startTurnAround();
   }
 
@@ -278,13 +283,19 @@ export default class AntGO extends GameObject {
     vec3.normalize(this.turnAroundForce, this.turnAroundForce);
   }
 
-  private dropPheremone(dt: number): void {
-    const type = this.state === AntState.Searching ? PheremoneType.LeavingHome : PheremoneType.ReturningFromFood;
-    
-    this.timeSinceLastPheremoneDrop += dt;
 
-    if (this.timeSinceLastPheremoneDrop >= this.timeBetweenPheremoneDrops && this.isGrounded) {
-      this.timeSinceLastPheremoneDrop = 0;
+  private dropPheromone(dt: number): void {
+    this.timeSinceSource += dt;
+
+    const type = this.state === AntState.Searching ? 
+      PheromoneType.LeavingHome : PheromoneType.ReturningFromFood;
+
+    if (this.timeSinceSource >= this.pheromoneRunOutTime) return;
+    
+    this.timeSinceLastPheromoneDrop += dt;
+
+    if (this.timeSinceLastPheromoneDrop >= this.timeBetweenPheromoneDrops && this.isGrounded) {
+      this.timeSinceLastPheromoneDrop = 0;
       this.colony!.addPheromone(this.position, type);
     }
   }

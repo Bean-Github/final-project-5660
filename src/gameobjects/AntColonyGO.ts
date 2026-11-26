@@ -2,7 +2,8 @@ import { vec3 } from 'gl-matrix';
 import GameObject from './GameObject';
 import Cube from '../drawables/Cube';
 import SpatialHash from '../utils/SpatialHash';
-import PheremoneGO, { PheremoneType } from './PheromoneGO';
+import Pheromone, { PheromoneType } from './pheromones/Pheromone';
+import PheromoneSystemGO from './pheromones/PheromoneSystemGO';
 import AntGO from './AntGO';
 import type Material from '../materials/Material';
 
@@ -12,8 +13,7 @@ export default class AntColonyGO extends GameObject {
   colonyRadius = 1.5;
 
   // Separate spatial hashes so searching/returning ants only scan relevant pheromones
-  homePheromones = new SpatialHash<PheremoneGO>(2.0);
-  foodPheromones = new SpatialHash<PheremoneGO>(2.0);
+  pheromoneSystem: PheromoneSystemGO | null;
 
   private antMaterial: Material;
     
@@ -30,6 +30,12 @@ export default class AntColonyGO extends GameObject {
     this.tag = 'colony';
     this.collider = { type: 'sphere', radius: this.colonyRadius };
     this.antMaterial = antMaterial;
+
+    this.pheromoneSystem = this.sceneRef?.spawnObject(new PheromoneSystemGO()) || null;
+
+    if (!this.pheromoneSystem) {
+      console.error('Failed to spawn PheromoneSystemGO for AntColonyGO');
+    }
   }
 
   override start(): void {}
@@ -70,27 +76,13 @@ export default class AntColonyGO extends GameObject {
     this.sceneRef?.destroyObject(ant);
   }
 
-  addPheromone(position: vec3, type: PheremoneType): void {
-    const pheromone = new PheremoneGO(vec3.clone(position), type);
-    pheromone.setColony(this);
-    const grid = this.getPheromoneGrid(type);
-    grid.insert(pheromone);
-    this.sceneRef?.spawnObject(pheromone);
+  addPheromone(position: vec3, type: PheromoneType): void {
+    this.pheromoneSystem?.addPheromone(position, type);
   }
 
-  removePheromone(pheromone: PheremoneGO, type: PheremoneType): void {
-    const grid = this.getPheromoneGrid(type);
-    grid.remove(pheromone);
-    this.sceneRef?.destroyObject(pheromone);
+  queryPheromones(type: PheromoneType, center: vec3, radius: number): Pheromone[] {
+    return this.pheromoneSystem?.queryPheromones(type, center, radius) || [];
   }
 
-  queryPheromones(type: PheremoneType, center: vec3, radius: number): PheremoneGO[] {
-    return this.getPheromoneGrid(type).queryRadius(center, radius);
-  }
-
-  private getPheromoneGrid(type: PheremoneType): SpatialHash<PheremoneGO> {
-    return type === PheremoneType.LeavingHome
-      ? this.homePheromones
-      : this.foodPheromones;
-  }
 }
+
