@@ -12,7 +12,7 @@ export default class FoodGO extends GameObject {
         let sphere = new Icosphere(
             vec3.fromValues(0, 0, 0),
             0.2,
-            5,
+            2,
         );
         sphere.create();
 

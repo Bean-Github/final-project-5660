@@ -17,6 +17,7 @@ import * as Helpers from '../utils/helpers';
 import * as Physics from '../physics/physics';
 import { screenToWorldRay } from '../utils/helpers';
 import * as Mouse from '../utils/mouse';
+import AntColonyGO from '../gameobjects/AntColonyGO';
 
 
 export default class SampleScene extends Scene {
@@ -36,11 +37,10 @@ export default class SampleScene extends Scene {
         //const ball = new BallGO(vec3.fromValues(0, 0, 0));
         //ball.setMaterial(material);
 
-        const ant = new AntGO(vec3.fromValues(0, 2, 0));
-        ant.setMaterial(antMaterial);
-        ant.setColor(vec3.fromValues(0.7, 0.2, 0.2)); // Set ant color to red
+        const colony = new AntColonyGO(vec3.fromValues(0, 0, 0), antMaterial);
+        this.spawnObject(colony);
 
-        this.spawnObject(ant);
+        colony.spawnAnts(100);
 
         // make plane
         const ground = new GroundGO(vec3.fromValues(0, 0, 0));

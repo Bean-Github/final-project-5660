@@ -72,15 +72,24 @@ export default class ObjectManager {
       entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
     });
 
+    object.start();
+
     this.objects.add(object);
-    this.renderData.set(object, { uniformBuffer, bindGroup });
+
+    if (object.drawable)
+    {
+      this.renderData.set(object, { uniformBuffer, bindGroup });
+    }
 
     return object;
   }
 
   update(dt: number): void {
     for (const object of [...this.objects]) {
-      if (this.objects.has(object)) object.update(dt);
+      if (this.objects.has(object)) 
+      {
+        object.update(dt);
+      }
     }
   }
 

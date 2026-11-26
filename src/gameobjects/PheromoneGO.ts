@@ -2,6 +2,7 @@
 import { vec3 } from 'gl-matrix';
 import GameObject from './GameObject';
 import Icosphere from '../drawables/Icosphere';
+import type AntColonyGO from './AntColonyGO';
 
 const PheremoneType = {
     LeavingHome: 0,
@@ -12,18 +13,23 @@ type PheremoneType = typeof PheremoneType[keyof typeof PheremoneType];
 export { PheremoneType };
 
 export default class PheremoneGO extends GameObject {
-    private pheremoneLifetime = 300.0; // seconds
+    private pheremoneLifetime = 30.0; // seconds
     private currentLifetime = 0.0; // seconds
 
-    
+    private colony: AntColonyGO | null = null;
+
+    private type: PheremoneType;
+
     constructor(position: vec3, type: PheremoneType)
     {
         super(position);
+
+        this.type = type;
         
         let sphere = new Icosphere(
             vec3.fromValues(0, 0, 0),
             0.1,
-            5,
+            2,
         );
         sphere.create();
 
@@ -38,7 +44,11 @@ export default class PheremoneGO extends GameObject {
                 break;
         }
 
-        this.tag = 'pheremone';
+        this.tag = 'pheromone';
+    }
+
+    setColony(colony: AntColonyGO): void {
+        this.colony = colony;
     }
 
     override start(): void {
@@ -48,8 +58,18 @@ export default class PheremoneGO extends GameObject {
     override update(dt: number): void {
         this.currentLifetime += dt;
         if (this.currentLifetime >= this.pheremoneLifetime) {
-            this.destroy();
+            this.colony?.removePheromone(this, this.type);
         }
+    }
+
+    getEvaporateT(): number {
+        let t = this.currentLifetime / this.pheremoneLifetime;
+        
+        if (this.type === PheremoneType.ReturningFromFood) {
+            t = 1.0 - t; // higher for more recent pheromones
+        }
+
+        return t;
     }
 
 }

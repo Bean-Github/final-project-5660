@@ -13,6 +13,8 @@ import { setScene } from './scenes/Scene';
 import SampleScene from './scenes/SampleScene';
 import { initMouseInput, endInputFrame } from './utils/mouse'
 
+import { getTime } from './utils/time';
+
 export async function startScene(
   canvas: HTMLCanvasElement,
   signal: AbortSignal,
@@ -44,6 +46,7 @@ export async function startScene(
   context.configure({ device, format });
 
   const shader = device.createShaderModule({ code: shaderSource });
+  const sampleCount = 4;
 
   const pipeline = device.createRenderPipeline({
     layout: 'auto',
@@ -83,13 +86,16 @@ export async function startScene(
       depthWriteEnabled: true,
       depthCompare: 'less',
     },
+    multisample: { // MSAA
+      count: sampleCount,
+    },
   });
 
   setPipeline(pipeline);
 
   const camera = new Camera(
     canvas,
-    vec3.fromValues(0, 0, 5),
+    vec3.fromValues(0, 2, 8),
     vec3.fromValues(0, 0, 0),
   );
 
@@ -100,8 +106,8 @@ export async function startScene(
   setObjectManager(objectManager);
 
   const scene = new SampleScene(objectManager);
-  await scene.setupScene();
   setScene(scene);
+  await scene.setupScene();
 
   const stats = new Stats();
   stats.showPanel(0);
@@ -127,6 +133,7 @@ export async function startScene(
   //   .onFinishChange(rebuildSphere);
   gui.add(controls, 'Load Scene');
 
+  let msaaTexture: GPUTexture | undefined;
   let depthTexture: GPUTexture | undefined;
   let frameId = 0;
   let previousTime: number | undefined;
@@ -138,9 +145,18 @@ export async function startScene(
     canvas.width = width;
     canvas.height = height;
 
+    msaaTexture?.destroy();
+    msaaTexture = device.createTexture({
+      size: [width, height],
+      sampleCount,
+      format,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
     depthTexture?.destroy();
     depthTexture = device.createTexture({
       size: [width, height],
+      sampleCount,
       format: 'depth24plus',
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
@@ -155,10 +171,12 @@ export async function startScene(
     : Math.min((currTime - previousTime) / 1000, 0.05);
 
     previousTime = currTime;
+
+    getTime().time = currTime / 1000;
     
     stats.begin();
 
-    // UPDATE
+    // UPDATE    
     camera.update(dt);
     objectManager.update(dt);
     scene.updateScene(dt);
@@ -167,7 +185,8 @@ export async function startScene(
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass({
       colorAttachments: [{
-        view: context!.getCurrentTexture().createView(),
+        view: msaaTexture!.createView(),
+        resolveTarget: context!.getCurrentTexture().createView(),
         clearValue: { r: 0.2, g: 0.2, b: 0.2, a: 1 },
         loadOp: 'clear',
         storeOp: 'store',
@@ -202,7 +221,7 @@ export async function startScene(
     window.removeEventListener('resize', resize);
     gui.destroy();
     stats.dom.remove();
-    
+    msaaTexture?.destroy();
     scene.destroyScene();
     objectManager.destroyAll();
 

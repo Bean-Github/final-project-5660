@@ -32,7 +32,6 @@ export default abstract class GameObject {
 
   constructor(position: vec3) {
     this.position = vec3.clone(position);
-    this.start();
   }
 
   abstract start(): void;
@@ -104,6 +103,7 @@ export default abstract class GameObject {
     return getObjectManager();
   }
 
+  // warning: this will not remove the object from the scene or object manager, it will just clean up resources
   destroy(): void {
     this.drawable?.destroy();
   }

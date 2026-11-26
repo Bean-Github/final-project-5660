@@ -16,6 +16,32 @@ export function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
 }
 
+export function clamp01(value: number): number {
+    return clamp(value, 0, 1);
+}
+
+export function randomOnSphere(radius: number): vec3 {
+    const u = Math.random();
+    const v = Math.random();
+
+    const theta = 2 * Math.PI * u;
+    const phi = Math.acos(2 * v - 1);
+
+    const x = radius * Math.sin(phi) * Math.cos(theta);
+    const y = radius * Math.sin(phi) * Math.sin(theta);
+    const z = radius * Math.cos(phi);
+
+    return vec3.fromValues(x, y, z);
+}
+
+export function randomOnCircle(radius: number): vec3 {
+    const angle = Math.random() * 2 * Math.PI;
+    const x = radius * Math.cos(angle);
+    const z = radius * Math.sin(angle);
+
+    return vec3.fromValues(x, 0, z);
+}
+
 
 export function rotateToward(current: vec3, target: vec3, maxAngle: number): vec3 {
     const currentDir = vec3.normalize(vec3.create(), current);
