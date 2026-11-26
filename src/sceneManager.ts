@@ -7,8 +7,9 @@ import Camera from './Camera';
 import shaderSource from './shaders/lambert.wgsl?raw';
 import { setDevice } from './rendering/gpuDeviceRef';
 import { setPipeline } from './rendering/gpuRenderPipelineRef';
-import ObjectManager from './ObjectManager';
+import ObjectManager, { setObjectManager } from './ObjectManager';
 import { setCamera } from './rendering/cameraRef';
+import { setScene } from './scenes/Scene';
 import SampleScene from './scenes/SampleScene';
 import { initMouseInput, endInputFrame } from './utils/mouse'
 
@@ -96,9 +97,11 @@ export async function startScene(
 
   const objectManager = new ObjectManager();
   await objectManager.setupObjectManager();
+  setObjectManager(objectManager);
 
   const scene = new SampleScene(objectManager);
   await scene.setupScene();
+  setScene(scene);
 
   const stats = new Stats();
   stats.showPanel(0);
@@ -207,3 +210,5 @@ export async function startScene(
     device.destroy();
   };
 }
+
+

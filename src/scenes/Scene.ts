@@ -6,13 +6,28 @@ import type GameObject from '../gameobjects/GameObject';
 import Material from '../materials/Material';
 
 // helpers
+let activeScene: Scene | null = null;
+
+export function setScene(scene: Scene): void {
+  activeScene = scene;
+}
+
+export function getScene(): Scene {
+  if (!activeScene) {
+    throw new Error('Scene has not been initialized');
+  }
+  return activeScene;
+}
+
+export function clearScene(scene: Scene): void {
+  if (activeScene === scene) activeScene = null;
+}
 
 export default abstract class Scene {
     private objectManagerRef: ObjectManager;
 
     constructor(objectManager: ObjectManager) {
         this.objectManagerRef = objectManager;
-        objectManager.sceneRef = this;
     }
 
     async setupScene(): Promise<void>
@@ -32,13 +47,13 @@ export default abstract class Scene {
         return this.objectManagerRef;
     }
 
-    spawnObject<T extends GameObject>(object: T): T {
-        object.sceneRef = this;
-        
-        
+    spawnObject<T extends GameObject>(object: T): T {        
         return this.objectManagerRef.add(object);
     }
-  
+
+    destroyObject(object: GameObject): void {
+        this.objectManagerRef.destroy(object);
+    }
 }
 
 

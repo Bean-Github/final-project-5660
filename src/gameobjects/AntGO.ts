@@ -4,6 +4,7 @@ import ObjDrawable from '../drawables/ObjDrawable';
 import antObj from '../assets/ant.obj?raw';
 import { randomFloat, clamp } from '../utils/helpers'; // your util file
 import PheremoneGO, { PheremoneType } from './PheremoneGO';
+import * as Physics from '../physics/physics';
 
 export default class AntGO extends GameObject {
   private timeBetweenPheremoneDrops = 1.0; // seconds
@@ -11,7 +12,7 @@ export default class AntGO extends GameObject {
 
   // random movement settings
   private moveSpeed = 3.0; // units per second
-  private maxTurnSpeed = 90.0; // degrees per second
+  private maxTurnSpeed = 180.0; // degrees per second
 
   private targetRotationY = 0;
   private wanderTimer = 0;
@@ -23,6 +24,10 @@ export default class AntGO extends GameObject {
     ant.create();
 
     this.drawable = ant;
+
+    this.tag = 'ant';
+
+    this.collider = { type: 'sphere', radius: 1.0 };
   }
 
   override start(): void {
@@ -67,5 +72,54 @@ export default class AntGO extends GameObject {
 
       this.sceneRef?.spawnObject(pheremone);
     }
+
+
+    if (this.objectManagerRef) {
+        const allObjects = this.objectManagerRef.getAll();
+        
+        // const hit = sphereCast(
+        //     allObjects,
+        //     { origin: this.position, direction: this.forward },
+        //     0.25, // ant body radius
+        //     1.5,  // look-ahead distance
+        //     { ignore: this, tag: 'obstacle' },
+        // );
+
+        // if (hit) {
+        // // Steer away along the surface normal
+        // this.targetRotationY = Math.atan2(hit.normal[0], hit.normal[2]);
+        // }
+
+        // OverlapSphere to smell nearby pheromones
+        const pheromones = Physics.overlapSphere(allObjects, this.position, 2.0, {
+            ignore: this,
+            tag: 'pheromone',
+        });
+        
+        const nearbyFood = Physics.overlapSphere(allObjects, this.position, 2.0, {
+            ignore: this,
+            tag: 'food',
+        });
+
+        // if there is nearby food, steer towards it
+        if (nearbyFood.length > 0) {
+            const food = nearbyFood[0];
+            this.targetRotationY = Math.atan2(
+                food.position[0] - this.position[0],
+                food.position[2] - this.position[2]
+            );
+        }
+        
+        for (const food of nearbyFood) {
+            // If the ant is close enough to the food, "eat" it
+            const distanceToFood = vec3.distance(this.position, food.position);
+            if (distanceToFood < 0.5) {
+                this.sceneRef?.destroyObject(food);
+                break; // Only eat one food at a time
+            }
+        }
+    }
+
   }
 }
+

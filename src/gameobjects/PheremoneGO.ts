@@ -34,6 +34,8 @@ export default class PheremoneGO extends GameObject {
                 this.setColor(vec3.fromValues(1, 0, 0)); // red for returning from food
                 break;
         }
+
+        this.tag = 'pheremone';
     }
 
     override start(): void {

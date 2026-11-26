@@ -3,7 +3,12 @@
 import { vec3, mat4 } from 'gl-matrix';
 import type Drawable from '../drawables/Drawable';
 import type Material from '../materials/Material';
-import type Scene from '../scenes/Scene';
+import Scene, { getScene } from '../scenes/Scene';
+import ObjectManager, { getObjectManager } from '../ObjectManager';
+
+export type Collider =
+  | { type: 'sphere'; radius: number }
+  | { type: 'box'; halfExtents: vec3 };
 
 
 export default abstract class GameObject {
@@ -17,8 +22,9 @@ export default abstract class GameObject {
 
   drawable: Drawable | null = null;
   material: Material | null = null;
-
-  sceneRef: Scene | null = null;
+  
+  tag = 'default';
+  collider: Collider | null = null;
 
   setMaterial(material: Material): void {
     this.material = material;
@@ -89,6 +95,13 @@ export default abstract class GameObject {
 
     this.rotationY = Math.atan2(dir[0], dir[2]);
     this.rotationX = -Math.asin(Math.max(-1, Math.min(1, dir[1])));
+  }
+
+  get sceneRef(): Scene | null {
+    return getScene();
+  }
+  get objectManagerRef(): ObjectManager | null {
+    return getObjectManager();
   }
 
   destroy(): void {

@@ -19,6 +19,10 @@ export default class FoodGO extends GameObject {
         this.drawable = sphere;
 
         this.setColor(vec3.fromValues(0, 1, 0)); // green for food
+
+        this.collider = { type: 'sphere', radius: 0.2 };
+        
+        this.tag = 'food';
     }
 
     override start(): void {
