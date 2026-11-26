@@ -9,7 +9,7 @@ const PheremoneType = {
 } as const;
 
 type PheremoneType = typeof PheremoneType[keyof typeof PheremoneType];
-
+export { PheremoneType };
 
 export default class PheremoneGO extends GameObject {
 
@@ -19,7 +19,7 @@ export default class PheremoneGO extends GameObject {
         
         let sphere = new Icosphere(
             vec3.fromValues(0, 0, 0),
-            1,
+            0.1,
             5,
         );
         sphere.create();

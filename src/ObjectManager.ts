@@ -2,6 +2,12 @@ import { mat4, vec4 } from 'gl-matrix';
 import GameObject from './gameobjects/GameObject';
 import { getDevice } from './rendering/gpuDeviceRef';
 import { getViewProj } from './rendering/cameraRef'
+import Material from './materials/Material';
+import type Scene from './scenes/Scene';
+import { getPipeline } from './rendering/gpuRenderPipelineRef';
+
+import { loadBitmap } from './utils/helpers';
+import defaultImageUrl from './assets/default.png';
 
 type ObjectRenderData = {
   uniformBuffer: GPUBuffer;
@@ -33,9 +39,20 @@ export default class ObjectManager {
 
   lightDir: vec4 = vec4.fromValues(0.5, 0.8, 1.0, 0.0);
 
-  constructor(pipeline: GPURenderPipeline) {
-    this.pipeline = pipeline;
+  sceneRef: Scene | null = null;
+  defaultMaterial: Material | null = null;
+
+  constructor() {
+    this.pipeline = getPipeline();
     this.device = getDevice();
+  }
+
+  async setupObjectManager(): Promise<void> {
+    // Any setup logic for the ObjectManager can go here
+    const defaultImage = await loadBitmap(defaultImageUrl);
+    this.defaultMaterial = new Material(
+        defaultImage
+    );
   }
 
   setLightDirection(direction: vec4): void {
@@ -93,6 +110,11 @@ export default class ObjectManager {
 
       if (object.material) {
         pass.setBindGroup(1, object.material.bindGroup);
+      }
+      else
+      {
+        // use a default material
+        pass.setBindGroup(1, this.defaultMaterial!.bindGroup);
       }
 
       object.draw(pass);

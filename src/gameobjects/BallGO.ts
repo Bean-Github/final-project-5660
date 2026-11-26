@@ -1,4 +1,3 @@
-
 import { vec3 } from 'gl-matrix';
 import GameObject from './GameObject';
 import Icosphere from '../drawables/Icosphere';

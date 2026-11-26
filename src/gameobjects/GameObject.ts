@@ -3,6 +3,7 @@
 import { vec3, mat4 } from 'gl-matrix';
 import type Drawable from '../drawables/Drawable';
 import type Material from '../materials/Material';
+import type Scene from '../scenes/Scene';
 
 
 export default abstract class GameObject {
@@ -15,8 +16,9 @@ export default abstract class GameObject {
   color: vec3 = vec3.fromValues(1, 1, 1);
 
   drawable: Drawable | null = null;
-
   material: Material | null = null;
+
+  sceneRef: Scene | null = null;
 
   setMaterial(material: Material): void {
     this.material = material;

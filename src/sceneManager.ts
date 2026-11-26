@@ -10,7 +10,7 @@ import { setPipeline } from './rendering/gpuRenderPipelineRef';
 import ObjectManager from './ObjectManager';
 import { setCamera } from './rendering/cameraRef';
 import SampleScene from './scenes/SampleScene';
-import { initMouseInput, endInputFrame } from './mouse'
+import { initMouseInput, endInputFrame } from './utils/mouse'
 
 export async function startScene(
   canvas: HTMLCanvasElement,
@@ -94,10 +94,11 @@ export async function startScene(
 
   setCamera(camera);
 
-  const objectManager = new ObjectManager(pipeline);
-  const scene = new SampleScene(objectManager);
+  const objectManager = new ObjectManager();
+  await objectManager.setupObjectManager();
 
-  await scene.setupScene(objectManager);
+  const scene = new SampleScene(objectManager);
+  await scene.setupScene();
 
   const stats = new Stats();
   stats.showPanel(0);
@@ -109,7 +110,8 @@ export async function startScene(
   async function restartScene() {
     scene.destroyScene();
     objectManager.destroyAll();
-    await scene.setupScene(objectManager);
+    await objectManager.setupObjectManager();
+    await scene.setupScene();
   }
 
   const controls = {

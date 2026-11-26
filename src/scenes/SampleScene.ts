@@ -2,7 +2,7 @@
 
 import { vec3, mat4 } from 'gl-matrix';
 import type ObjectManager from '../ObjectManager';
-import Scene, { loadBitmap } from './Scene';
+import Scene from './Scene';
 import Material from '../materials/Material';
 
 import AntGO from '../gameobjects/AntGO';
@@ -11,9 +11,12 @@ import antmanColorUrl from '../assets/antmancolor.png';
 
 import FoodGO from '../gameobjects/FoodGO';
 
-import * as Helpers from '../helpers';
-import { screenToWorldRay } from '../helpers';
-import * as Mouse from '../mouse';
+import GroundGO from '../gameobjects/GroundGO';
+
+import * as Helpers from '../utils/helpers';
+import { screenToWorldRay } from '../utils/helpers';
+import * as Mouse from '../utils/mouse';
+
 
 export default class SampleScene extends Scene {
     
@@ -21,9 +24,9 @@ export default class SampleScene extends Scene {
     super(objectManager);
   }
 
-    async setupScene(objectManager: ObjectManager): Promise<void> {
+    async setupScene(): Promise<void> {
         // Implementation for setting up the sample scene
-        const antImage = await loadBitmap(antColorUrl);
+        const antImage = await Helpers.loadBitmap(antColorUrl);
 
         const antMaterial = new Material(
             antImage
@@ -34,11 +37,15 @@ export default class SampleScene extends Scene {
 
         const ant = new AntGO(vec3.fromValues(0, 2, 0));
         ant.setMaterial(antMaterial);
-
         ant.setColor(vec3.fromValues(0.7, 0.2, 0.2)); // Set ant color to red
 
-        //objectManager.add(ball);
-        objectManager.add(ant);
+        this.spawnObject(ant);
+
+        // make plane
+        const ground = new GroundGO(vec3.fromValues(0, 0, 0));
+        this.spawnObject(ground);
+
+        
     }
 
     // if you click the ground place a food there
@@ -55,7 +62,7 @@ export default class SampleScene extends Scene {
             if (intersection !== null) {
                 // spawn food
                 const food = new FoodGO(intersection.point);
-                this.objectManagerRef.add(food);
+                this.spawnObject(food);
             }
         }
     }

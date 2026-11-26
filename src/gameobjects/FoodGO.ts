@@ -1,4 +1,3 @@
-
 import { vec3 } from 'gl-matrix';
 import GameObject from './GameObject';
 import Icosphere from '../drawables/Icosphere';
@@ -18,6 +17,8 @@ export default class FoodGO extends GameObject {
         sphere.create();
 
         this.drawable = sphere;
+
+        this.setColor(vec3.fromValues(0, 1, 0)); // green for food
     }
 
     override start(): void {

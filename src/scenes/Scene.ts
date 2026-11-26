@@ -2,28 +2,23 @@
 
 import { vec3, mat4 } from 'gl-matrix';
 import type ObjectManager from '../ObjectManager';
+import type GameObject from '../gameobjects/GameObject';
+import Material from '../materials/Material';
 
 // helpers
-export async function loadBitmap(url: string): Promise<ImageBitmap> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Could not load texture: ${url}`);
-
-  return createImageBitmap(await response.blob());
-}
 
 export default abstract class Scene {
-    objectManagerRef: ObjectManager;
+    private objectManagerRef: ObjectManager;
 
     constructor(objectManager: ObjectManager) {
         this.objectManagerRef = objectManager;
+        objectManager.sceneRef = this;
     }
 
+    async setupScene(): Promise<void>
+    {
 
-
-
-
-    async setupScene(objectManager: ObjectManager, device: GPUDevice, pipeline: GPURenderPipeline): Promise<void>
-    { }
+    }
 
     updateScene(dt: number): void
     { }
@@ -31,6 +26,18 @@ export default abstract class Scene {
     destroyScene(): void
     { }
 
+
+    // scene helpers
+    get objectManager(): ObjectManager {
+        return this.objectManagerRef;
+    }
+
+    spawnObject<T extends GameObject>(object: T): T {
+        object.sceneRef = this;
+        
+        
+        return this.objectManagerRef.add(object);
+    }
   
 }
 
