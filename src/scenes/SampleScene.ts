@@ -3,25 +3,20 @@
 import { vec3, vec2 } from 'gl-matrix';
 import type ObjectManager from '../ObjectManager';
 import Scene from './Scene';
-import antColorUrl from '../assets/antskin.png';
-
-import FoodGO from '../gameobjects/FoodGO';
 
 import GroundGO from '../gameobjects/GroundGO';
 
-import * as Helpers from '../utils/helpers';
 import * as Physics from '../physics/physics';
 import { screenToWorldRay } from '../utils/helpers';
 import * as Mouse from '../utils/mouse';
 import AntColonyGO from '../gameobjects/AntColonyGO';
-import TextureMaterial from '../materials/TextureMaterial';
-import toonShaderSource from '../shaders/toon.wgsl?raw';
+
 
 export default class SampleScene extends Scene {
-    
-  constructor(objectManager: ObjectManager) {
-    super(objectManager);
-  }
+    colony: AntColonyGO | null = null;
+    constructor(objectManager: ObjectManager) {
+        super(objectManager);
+    }
 
     async setupScene(): Promise<void> {
         // Implementation for setting up the sample scene
@@ -29,10 +24,10 @@ export default class SampleScene extends Scene {
         //const ball = new BallGO(vec3.fromValues(0, 0, 0));
         //ball.setMaterial(material);
 
-        const colony = new AntColonyGO(vec3.fromValues(0, 0, 0));
-        this.spawnObject(colony);
+        this.colony = new AntColonyGO(vec3.fromValues(0, 0, 0));
+        this.spawnObject(this.colony);
 
-        colony.spawnAnts(400);
+        this.colony.spawnAnts(50);
 
         // make plane
         const ground = new GroundGO(vec3.fromValues(0, 0, 0), vec2.fromValues(200, 200));
@@ -52,8 +47,7 @@ export default class SampleScene extends Scene {
 
             if (intersection !== null) {
                 // spawn food
-                const food = new FoodGO(intersection.point);
-                this.spawnObject(food);
+                this.colony?.foodSystem?.addFood(intersection.point);
             }
         }
     }

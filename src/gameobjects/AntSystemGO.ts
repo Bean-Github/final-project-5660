@@ -1,87 +1,224 @@
 import { vec3 } from 'gl-matrix';
 import GameObject from './GameObject';
-import AntGO from './AntGO';
-import instancedAntShader from '../shaders/instancedant.wgsl?raw';
-
-import * as Textures from '../utils/textures';
-
 import ObjDrawable from '../drawables/ObjDrawable';
-import antObj from '../assets/ant.obj?raw';
 import InstancedTextureMaterial from '../materials/InstancedTextureMaterial';
+import ComputeShader from '../compute/ComputeShader';
+import { getDevice } from '../rendering/gpuDeviceRef';
+import { getTime } from '../utils/time';
+import * as Textures from '../utils/textures';
+import PheromoneSystemGO, {
+  MAX_PHEROMONES,
+  PHEROMONE_GRID_X,
+  PHEROMONE_GRID_Y,
+  PHEROMONE_GRID_Z,
+  PHEROMONE_CELL_SIZE,
+  PHEROMONE_WORLD_HALF_X,
+  PHEROMONE_WORLD_HALF_Z,
+} from './pheromones/PheromoneSystemGO';
 
-const MAX_ANTS = 100000;
-const FLOATS_PER_INSTANCE = 20; // mat4x4 model + vec4(r, g, b, a)
+import antObj from '../assets/ant.obj?raw';
+import instancedAntShader from '../shaders/instancedant.wgsl?raw';
+import antComputeShader from '../compute/antCompute.wgsl?raw';
+import type FoodSystemGO from './FoodSystemGO';
 
-// this renders all the ants using instancing
+const MAX_ANTS = 10000;
+const FLOATS_PER_INSTANCE = 20; // mat4x4 model (16) + vec4 color (4)
+const ANT_STRIDE_FLOATS = 24;   // 96 bytes per Ant struct
+const ANT_STRIDE_BYTES = ANT_STRIDE_FLOATS * 4;
+
 export default class AntSystemGO extends GameObject {
-    private ants: AntGO[] = [];
-    private instanceData = new Float32Array(MAX_ANTS * FLOATS_PER_INSTANCE);
-    private instancedMaterial: InstancedTextureMaterial;
+  private instancedMaterial: InstancedTextureMaterial;
+  private instanceData = new Float32Array(MAX_ANTS * FLOATS_PER_INSTANCE);
 
-    constructor() {
-        super(vec3.fromValues(0, 0, 0));
+  private antCount = 0;
+  private colonyPos = vec3.create();
+  private colonyRadius = 1.5;
 
-        // ONE shared mesh for all pheromones
-        const ant = new ObjDrawable(antObj);
-        ant.create();
-        this.drawable = ant;
-        this.setColor(vec3.fromValues(1.0, 66/255, 56/255)); // Set ant color to red
+  private moveSpeed = 3.0;
+  private maxLifetime = 30.0;
 
-        const antImage = Textures.getTexture('ant');
+  // GPU buffers
+  private paramsBuffer: GPUBuffer;
+  private paramsData = new ArrayBuffer(80); // 20 x 4 bytes
+  private paramsF32 = new Float32Array(this.paramsData);
+  private paramsU32 = new Uint32Array(this.paramsData);
 
-        // Pre-allocated storage buffer for up to MAX_PHEROMONES
-        this.instancedMaterial = new InstancedTextureMaterial(
-            this.instanceData, 0, FLOATS_PER_INSTANCE, antImage, instancedAntShader
-        );
+  private antsBuffer: GPUBuffer;
+  //private foodsBuffer: GPUBuffer;
+  //private foodActiveBuffer: GPUBuffer;
 
-        this.setMaterial(this.instancedMaterial);
-        this.tag = 'ant_system';
+  private antCompute: ComputeShader;
+
+  private pheromoneSystem: PheromoneSystemGO;
+  private foodSystem: FoodSystemGO;
+
+  constructor(
+    pheromoneSystem: PheromoneSystemGO,
+    foodSystem: FoodSystemGO,
+    colonyPos: vec3 = vec3.fromValues(0, 0, 0),
+    colonyRadius = 1.5,
+  ) {
+    super(vec3.fromValues(0, 0, 0));
+    this.pheromoneSystem = pheromoneSystem;
+    this.foodSystem = foodSystem;
+
+    vec3.copy(this.colonyPos, colonyPos);
+    this.colonyRadius = colonyRadius;
+
+    const antMesh = new ObjDrawable(antObj);
+    antMesh.create();
+    this.drawable = antMesh;
+    this.setColor(vec3.fromValues(255 / 255, 66 / 255, 56 / 255));
+
+    const antImage = Textures.getTexture('ant');
+    this.instancedMaterial = new InstancedTextureMaterial(
+      this.instanceData,
+      0,
+      FLOATS_PER_INSTANCE,
+      antImage,
+      instancedAntShader,
+    );
+    this.material = this.instancedMaterial;
+    this.tag = 'ant_system';
+
+    // SETUP COMPUTE SHADER BELOW
+    const device = getDevice();
+
+    this.paramsBuffer = device.createBuffer({
+      size: 80,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    this.antsBuffer = device.createBuffer({
+      size: MAX_ANTS * ANT_STRIDE_BYTES,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
+    this.antCompute = new ComputeShader(
+      antComputeShader,
+      [
+        { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+        { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+        { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+        { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+        { binding: 4, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+        { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+        { binding: 6, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+        { binding: 7, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+      ],
+      [
+        { binding: 0, resource: { buffer: this.paramsBuffer } },
+        { binding: 1, resource: { buffer: this.antsBuffer } },
+        { binding: 2, resource: { buffer: this.instancedMaterial.instanceBuffer } },
+        { binding: 3, resource: { buffer: pheromoneSystem.getGridBuffer() } },
+        { binding: 4, resource: { buffer: foodSystem.getFoodsBuffer() } },
+        { binding: 5, resource: { buffer: foodSystem.getFoodActiveBuffer() } },
+        { binding: 6, resource: { buffer: pheromoneSystem.getInstanceBuffer() } },
+        { binding: 7, resource: { buffer: pheromoneSystem.getHeadBuffer() } },
+      ],
+    );
+  }
+
+  setColony(pos: vec3, radius: number): void {
+    vec3.copy(this.colonyPos, pos);
+    this.colonyRadius = radius;
+  }
+
+  spawnAnts(count: number, origin: vec3 = this.colonyPos): void {
+    const toSpawn = Math.min(count, MAX_ANTS - this.antCount);
+    if (toSpawn <= 0) return;
+
+    const raw = new ArrayBuffer(toSpawn * ANT_STRIDE_BYTES);
+    const f32 = new Float32Array(raw);
+    const u32 = new Uint32Array(raw);
+
+    for (let i = 0; i < toSpawn; i++) {
+      const o = i * ANT_STRIDE_FLOATS;
+      const angle = Math.random() * Math.PI * 2;
+      const vx = Math.sin(angle) * this.moveSpeed;
+      const vz = Math.cos(angle) * this.moveSpeed;
+
+      f32[o + 0] = origin[0];
+      f32[o + 1] = origin[1];
+      f32[o + 2] = origin[2];
+      f32[o + 3] = angle;
+
+      f32[o + 4] = vx;
+      f32[o + 5] = 0;
+      f32[o + 6] = vz;
+      u32[o + 7] = 0;
+
+      f32[o + 8] = 0;
+      f32[o + 9] = 0;
+      f32[o + 10] = 0;
+      f32[o + 11] = Math.random() * 0.5;
+
+      f32[o + 12] = 0;
+      f32[o + 13] = 0;
+      f32[o + 14] = 0;
+      f32[o + 15] = 0;
+
+      f32[o + 16] = origin[0];
+      f32[o + 17] = origin[1];
+      f32[o + 18] = origin[2];
+      f32[o + 19] = 0;
+
+      f32[o + 20] = Math.random() * 5.0;
+      u32[o + 21] = ((this.antCount + i + 1) * 747796405) >>> 0;
+      u32[o + 22] = 1;
+      u32[o + 23] = 0;
     }
 
-    async setMaterial(material: InstancedTextureMaterial): Promise<void> {
-        this.material = material;
-    }
+    getDevice().queue.writeBuffer(
+      this.antsBuffer,
+      this.antCount * ANT_STRIDE_BYTES,
+      raw,
+    );
 
-    addAnt(ant: AntGO): void {
-        if (this.ants.length >= MAX_ANTS) return;
+    this.antCount += toSpawn;
+    this.instancedMaterial.instanceCount = this.antCount;
+  }
 
-        this.ants.push(ant);
-    }
+  override start(): void {}
 
-    removeAnt(ant: AntGO): void {
-        const index = this.ants.indexOf(ant);
-        if (index !== -1) {
-            // swap and pop
-            this.ants[index] = this.ants[this.ants.length - 1];
-            this.ants.pop();
-        }
-    }
+  override update(dt: number): void {
+    if (this.antCount === 0) return;
 
-    override start(): void { }
+    const device = getDevice();
 
-    override update(dt: number): void {
-        // pack active pheromones into the Float32Array
-        const count = this.ants.length;
-        for (let i = 0; i < count; i++) {
-            const ant = this.ants[i];
-            const offset = i * FLOATS_PER_INSTANCE;
+    // Pack SimParams (80 bytes)
+    this.paramsF32[0] = dt;
+    this.paramsF32[1] = getTime().time;
+    this.paramsU32[2] = this.antCount;
+    this.paramsU32[3] = this.foodSystem.getFoodCount();
 
-            const remaining = 1.0 - ant.currentLifetime / ant.maxLifetime;
+    this.paramsF32[4] = this.colonyPos[0];
+    this.paramsF32[5] = this.colonyPos[1];
+    this.paramsF32[6] = this.colonyPos[2];
+    this.paramsF32[7] = this.colonyRadius;
 
-            // set model matrix
-            const modelMatrix = ant.getModelMatrix();
-            this.instanceData.set(modelMatrix, offset); // 16 floats for mat4x4
+    this.paramsU32[8] = PHEROMONE_GRID_X;
+    this.paramsU32[9] = PHEROMONE_GRID_Y;
+    this.paramsU32[10] = PHEROMONE_GRID_Z;
+    this.paramsF32[11] = PHEROMONE_CELL_SIZE;
 
-            // set color (r, g, b, a)
-            this.instanceData[offset + 16] = remaining; // r
-            this.instanceData[offset + 17] = remaining; // g
-            this.instanceData[offset + 18] = remaining; // b
-            this.instanceData[offset + 19] = remaining; // a
-        }
+    this.paramsF32[12] = PHEROMONE_WORLD_HALF_X;
+    this.paramsF32[13] = PHEROMONE_WORLD_HALF_Z;
+    this.paramsU32[14] = MAX_PHEROMONES;
+    this.paramsF32[15] = this.maxLifetime;
 
-        // upload only the active slice to the GPU
-        this.instancedMaterial.updateInstances(this.instanceData, count);
-    }
+    this.paramsF32[16] = this.moveSpeed;
+    this.paramsF32[17] = this.pheromoneSystem.getGridMax();
+    this.paramsF32[18] = 0;
+    this.paramsF32[19] = 0;
+
+    device.queue.writeBuffer(this.paramsBuffer, 0, this.paramsData);
+
+    const encoder = device.createCommandEncoder();
+    this.antCompute.dispatch(encoder, this.antCount);
+    device.queue.submit([encoder.finish()]);
+
+    this.instancedMaterial.instanceCount = this.antCount;
+  }
 
 }
-

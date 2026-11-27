@@ -1,7 +1,7 @@
 import { getDevice } from '../rendering/gpuDeviceRef';
 
 export default abstract class Drawable {
-  count = 0;
+  indexCount = 0;
 
   private positionBuffer?: GPUBuffer;
   private normalBuffer?: GPUBuffer;
@@ -45,7 +45,7 @@ export default abstract class Drawable {
     device.queue.writeBuffer(this.indexBuffer, 0, indices);
     device.queue.writeBuffer(this.uvBuffer, 0, uvs);
 
-    this.count = indices.length;
+    this.indexCount = indices.length;
   }
 
   draw(pass: GPURenderPassEncoder, instanceCount: number): void {
@@ -58,7 +58,24 @@ export default abstract class Drawable {
     pass.setIndexBuffer(this.indexBuffer, 'uint32');
     pass.setVertexBuffer(2, this.uvBuffer);
 
-    pass.drawIndexed(this.count, instanceCount);
+    pass.drawIndexed(this.indexCount, instanceCount);
+  }
+
+  drawIndirect(
+    pass: GPURenderPassEncoder,
+    indirectBuffer: GPUBuffer,
+    indirectOffset = 0,
+  ): void {
+    if (!this.positionBuffer || !this.normalBuffer || !this.indexBuffer) {
+      return;
+    }
+
+    pass.setVertexBuffer(0, this.positionBuffer);
+    pass.setVertexBuffer(1, this.normalBuffer);
+    pass.setIndexBuffer(this.indexBuffer, 'uint32');
+    pass.setVertexBuffer(2, this.uvBuffer);
+
+    pass.drawIndexedIndirect(indirectBuffer, indirectOffset);
   }
 
   destroy(): void {

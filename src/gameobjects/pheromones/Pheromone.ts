@@ -20,6 +20,6 @@ export default class Pheromone {
 
   getEvaporateT(): number {
     let t = this.currentLifetime / this.maxLifetime;
-    return this.type === PheromoneType.LeavingHome ? 1.0 - t : t;
+    return t;
   }
 }
