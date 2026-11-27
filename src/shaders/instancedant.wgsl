@@ -32,8 +32,20 @@ fn vertexMain(
   @builtin(instance_index) idx: u32,
 ) -> VertexOutput {
   let inst = instances[idx];
+
+  // time in seconds packed into lightDir.w
+  let time = uniforms.lightDir.w;
+
+  // Offset phase per ant so they don't pulse in unison
+  let phase = f32(idx) * 1.37;
+  let speed = 15.0;
+  let amplitude = 0.12; // +/- 12% size pulse
+
+  let pulse = 1.0 + sin(time * speed + phase) * amplitude;
+  let pulsedPos = vec4f(pos.xyz * pulse, 1.0);
+
   var output: VertexOutput;
-  output.clipPosition = uniforms.viewProj * inst.model * pos;
+  output.clipPosition = uniforms.viewProj * inst.model * pulsedPos;
   output.normal = normalize((inst.model * vec4f(normal.xyz, 0.0)).xyz);
   output.uv = uv;
   output.instanceID = idx;

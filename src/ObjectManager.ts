@@ -9,6 +9,7 @@ import TextureMaterial from './materials/TextureMaterial';
 import { getObjectBindGroupLayout } from './rendering/pipelineConfig';
 import toonShaderSource from './shaders/toon.wgsl?raw';
 import * as Textures from './utils/textures';
+import { getTime } from './utils/time';
 
 type ObjectRenderData = {
   uniformBuffer: GPUBuffer;
@@ -113,6 +114,7 @@ export default class ObjectManager {
       uniforms.set(viewProj, 16);               // Shared camera transform
       uniforms.set(object.color, 32);           // Color
       uniforms.set(this.lightDir, 36);                // Light direction
+      uniforms[39] = getTime().time; // Current time in seconds
 
       this.device.queue.writeBuffer(
         renderData.uniformBuffer,

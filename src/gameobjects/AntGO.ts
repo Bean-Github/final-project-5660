@@ -25,8 +25,8 @@ export default class AntGO extends GameObject {
   readonly maxLifetime = 30.0; // seconds
 
   // pheromone drop settings
-  private timeBetweenPheromoneDrops = 0.3; // seconds
-  private timeSinceLastPheromoneDrop = 0.0; // seconds
+  private distanceBetweenPheromoneDrops = 0.9; // units (~0.3s at moveSpeed 3.0)
+  private lastPheromonePos = vec3.create();
   private timeSinceSource = 0;
   private pheromoneRunOutTime = 15;
 
@@ -46,7 +46,8 @@ export default class AntGO extends GameObject {
 
   // vision
   private foodDetectionRadius = 10.0; // units
-  private foodDetectionAngle = 90.0; // degrees
+  private foodCloseDetectionRadius = 4.0; // units (360° detection)
+  private foodDetectionAngle = 110.0; // degrees
 
   // grounded
   private isGrounded = false;
@@ -62,6 +63,7 @@ export default class AntGO extends GameObject {
 
   constructor(position: vec3) {
     super(position);
+    vec3.copy(this.lastPheromonePos, position);
 
     // const ant = new ObjDrawable(antObj);
     // ant.create();
@@ -80,6 +82,7 @@ export default class AntGO extends GameObject {
     this.nextDirUpdateTime = 0;
     vec3.set(this.pheromoneSteerForce, 0, 0, 0);
     vec3.set(this.randomSteerForce, 0, 0, 0);
+    vec3.copy(this.lastPheromonePos, position);
 
     this.rotationY = randomFloat(0, Math.PI * 2);
     this.velocity[0] = this.forward[0] * this.moveSpeed;
@@ -130,6 +133,7 @@ export default class AntGO extends GameObject {
 
     // cull out the nearby food by angle
     const cosHalfAngle = Math.cos((this.foodDetectionAngle * 0.5 * Math.PI) / 180);
+    const closeRadiusSq = this.foodCloseDetectionRadius * this.foodCloseDetectionRadius;
 
     const filteredFood = nearbyFood.filter((food) => {
       const toFood = vec3.fromValues(
@@ -138,7 +142,8 @@ export default class AntGO extends GameObject {
         food.position[2] - this.position[2],
       );
 
-      if (vec3.squaredLength(toFood) < 1e-6) return true;
+      const distSq = vec3.squaredLength(toFood);
+      if (distSq <= closeRadiusSq) return true; // if close enough its always detected
 
       vec3.normalize(toFood, toFood);
       return vec3.dot(this.forward, toFood) >= cosHalfAngle;
@@ -325,16 +330,17 @@ export default class AntGO extends GameObject {
 
   private dropPheromone(dt: number): void {
     this.timeSinceSource += dt;
-
-    const type = this.state === AntState.Searching ? 
-      PheromoneType.LeavingHome : PheromoneType.ReturningFromFood;
-
     if (this.timeSinceSource >= this.pheromoneRunOutTime) return;
-    
-    this.timeSinceLastPheromoneDrop += dt;
+    if (!this.isGrounded) return;
 
-    if (this.timeSinceLastPheromoneDrop >= this.timeBetweenPheromoneDrops && this.isGrounded) {
-      this.timeSinceLastPheromoneDrop = 0;
+    const minDistSq = this.distanceBetweenPheromoneDrops * this.distanceBetweenPheromoneDrops;
+    if (vec3.squaredDistance(this.position, this.lastPheromonePos) >= minDistSq) {
+      vec3.copy(this.lastPheromonePos, this.position);
+
+      const type = this.state === AntState.Searching
+        ? PheromoneType.LeavingHome
+        : PheromoneType.ReturningFromFood;
+
       this.colony!.addPheromone(this.position, type);
     }
   }
