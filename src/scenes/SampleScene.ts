@@ -27,7 +27,7 @@ export default class SampleScene extends Scene {
         this.colony = new AntColonyGO(vec3.fromValues(0, 0, 0));
         this.spawnObject(this.colony);
 
-        this.colony.spawnAnts(50);
+        this.colony.spawnAnts(1000);
 
         // make plane
         const ground = new GroundGO(vec3.fromValues(0, 0, 0), vec2.fromValues(200, 200));
