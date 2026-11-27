@@ -3,6 +3,7 @@
 import { vec3 } from 'gl-matrix';
 import Stats from 'stats.js';
 import * as DAT from 'dat.gui';
+import * as Textures from './utils/textures';
 import Camera from './Camera';
 import { setDevice } from './rendering/gpuDeviceRef';
 import ObjectManager, { setObjectManager } from './ObjectManager';
@@ -54,6 +55,8 @@ export async function startScene(
   );
 
   setCamera(camera);
+
+  await Textures.preloadTextures();
 
   const objectManager = new ObjectManager();
   await objectManager.setupObjectManager();
@@ -200,7 +203,7 @@ export async function startScene(
       colorAttachments: [{
         view: msaaTexture!.createView(),
         resolveTarget: context!.getCurrentTexture().createView(),
-        clearValue: { r: 55/255, g: 74/255, b: 30/255, a: 1 },
+        clearValue: { r: 220/255, g: 239/255, b: 252/255, a: 1 },
         loadOp: 'clear',
         storeOp: 'store',
       }],

@@ -1,7 +1,6 @@
-// materials/ShaderMaterial.ts
 import Material, { type PipelineOptions } from './Material';
 
-export default class ShaderMaterial extends Material {
+export default class BasicMaterial extends Material {
   readonly pipeline: GPURenderPipeline;
   readonly bindGroup = null;
 

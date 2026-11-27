@@ -92,12 +92,3 @@ export function screenToWorldRay(ndcX: number, ndcY: number): Ray {
 }
 
 
-// rendering things
-export async function loadBitmap(url: string): Promise<ImageBitmap> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Could not load texture: ${url}`);
-
-  return createImageBitmap(await response.blob());
-}
-
-

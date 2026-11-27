@@ -5,11 +5,10 @@ import { getViewProj } from './rendering/cameraRef'
 import Material from './materials/Material';
 import type Scene from './scenes/Scene';
 
-import { loadBitmap } from './utils/helpers';
-import defaultImageUrl from './assets/default.png';
 import TextureMaterial from './materials/TextureMaterial';
 import { getObjectBindGroupLayout } from './rendering/pipelineConfig';
 import toonShaderSource from './shaders/toon.wgsl?raw';
+import * as Textures from './utils/textures';
 
 type ObjectRenderData = {
   uniformBuffer: GPUBuffer;
@@ -35,6 +34,9 @@ export function clearObjectManager(objectManager: ObjectManager): void {
 
 export default class ObjectManager {
   private readonly objects = new Set<GameObject>();
+
+  // we store a map from gameobject to its corresponding render data,
+  // which includes the uniform buffer and bind group for that object
   private readonly renderData = new Map<GameObject, ObjectRenderData>();
   private readonly device: GPUDevice;
 
@@ -49,7 +51,7 @@ export default class ObjectManager {
 
   async setupObjectManager(): Promise<void> {
     // Any setup logic for the ObjectManager can go here
-    const defaultImage = await loadBitmap(defaultImageUrl);
+    const defaultImage = Textures.getTexture('default');
     this.defaultMaterial = new TextureMaterial(
         defaultImage,
         toonShaderSource

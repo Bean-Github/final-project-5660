@@ -5,7 +5,7 @@ import InstancedMaterial from '../../materials/InstancedMaterial';
 import SpatialHash from '../../utils/SpatialHash';
 import Pheromone, { PheromoneType } from './Pheromone';
 
-const MAX_PHEROMONES = 100000;
+const MAX_PHEROMONES = 1000000;
 const FLOATS_PER_INSTANCE = 8; // vec4(x, y, z, scale) + vec4(r, g, b, a)
 
 export default class PheromoneSystemGO extends GameObject {
@@ -25,7 +25,7 @@ export default class PheromoneSystemGO extends GameObject {
     this.drawable = sphere;
 
     // Pre-allocated storage buffer for up to MAX_PHEROMONES
-    this.instancedMaterial = new InstancedMaterial(this.instanceData, 0);
+    this.instancedMaterial = new InstancedMaterial(this.instanceData, 0, FLOATS_PER_INSTANCE);
     this.setMaterial(this.instancedMaterial);
     this.tag = 'pheromone_system';
   }

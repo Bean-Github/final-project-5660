@@ -19,6 +19,8 @@ export default abstract class Material {
   abstract readonly pipeline: GPURenderPipeline;
   abstract readonly bindGroup: GPUBindGroup | null;
 
+  readonly isInstanced: boolean = false;
+
   // this will be called by subclasses to get or create a pipeline 
   // based on the shader source and options
 

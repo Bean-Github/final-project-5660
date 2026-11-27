@@ -20,6 +20,10 @@ export default class AntGO extends GameObject {
   private state: AntState = AntState.Searching;
   private colony: AntColonyGO | null = null;
 
+  // lifetime
+  currentLifetime = 0;
+  readonly maxLifetime = 30.0; // seconds
+
   // pheromone drop settings
   private timeBetweenPheromoneDrops = 0.3; // seconds
   private timeSinceLastPheromoneDrop = 0.0; // seconds
@@ -49,7 +53,7 @@ export default class AntGO extends GameObject {
 
   // pheremone detection
   private pheromoneSteerForce = vec3.create();
-  private sensorDst = 1.0;
+  private sensorDst = 2.0;
   private timeBetweenDirUpdate = 0.2; // seconds
   private sensors = [vec3.create(), vec3.create(), vec3.create()];
   private nextDirUpdateTime = 0;
@@ -59,12 +63,28 @@ export default class AntGO extends GameObject {
   constructor(position: vec3) {
     super(position);
 
-    const ant = new ObjDrawable(antObj);
-    ant.create();
+    // const ant = new ObjDrawable(antObj);
+    // ant.create();
 
-    this.drawable = ant;
+    // this.drawable = ant;
     this.tag = 'ant';
     this.collider = { type: 'sphere', radius: 1.0 };
+  }
+  
+  reset(position: vec3): void {
+    vec3.copy(this.position, position);
+    this.state = AntState.Searching;
+    this.currentLifetime = 0;
+    this.timeSinceSource = 0;
+    this.turnAroundTimer = 0;
+    this.nextDirUpdateTime = 0;
+    vec3.set(this.pheromoneSteerForce, 0, 0, 0);
+    vec3.set(this.randomSteerForce, 0, 0, 0);
+
+    this.rotationY = randomFloat(0, Math.PI * 2);
+    this.velocity[0] = this.forward[0] * this.moveSpeed;
+    this.velocity[1] = 0;
+    this.velocity[2] = this.forward[2] * this.moveSpeed;
   }
 
   setColony(colony: AntColonyGO): void {
@@ -81,7 +101,9 @@ export default class AntGO extends GameObject {
     this.velocity[2] = this.forward[2] * this.moveSpeed;
   }
 
-  override update(dt: number): void {  
+  override update(dt: number): void {
+    this.currentLifetime += dt;
+
     this.dropPheromone(dt);
     this.handleRandomSteering(dt);
 
@@ -93,6 +115,10 @@ export default class AntGO extends GameObject {
 
     // TODO: handle collision steering
     this.updateMovement(dt);
+
+    if (this.currentLifetime >= this.maxLifetime) {
+      this.colony?.respawnAnt(this);
+    }
   }
 
   private handleSearchSteering(dt: number): void {
@@ -162,6 +188,7 @@ export default class AntGO extends GameObject {
 
     if (distToHome < this.colony.colonyRadius) {
       this.switchToSearching();
+      this.colony.returnAnt(this);
       return;
     }
 
@@ -231,27 +258,36 @@ export default class AntGO extends GameObject {
 				for (let j = 0; j < numPheromones; j++)
 				{
 					const evaporateT = pheromoneEntries[j].getEvaporateT();
-					const strength = Helpers.clamp01(1 - evaporateT);
-					//strength = strength * strength;
+					let strength = Helpers.clamp01(1 - evaporateT);
+					strength = strength * strength;
 					this.sensorData[i] += strength;
 				}
 			}
 
-			const center = this.sensorData[centerIndex];
-			const left = this.sensorData[leftIndex];
-			const right = this.sensorData[rightIndex];
+      const center = this.sensorData[centerIndex];
+      const left = this.sensorData[leftIndex];
+      const right = this.sensorData[rightIndex];
 
-      if (center > left && center > right) 
-      {
-        vec3.scale(this.pheromoneSteerForce, currentForwardDir, this.pheromoneWeight);
-      } 
-      else if (left > right) 
-      {
-        vec3.scale(this.pheromoneSteerForce, leftDir, this.pheromoneWeight);
-      } 
-      else if (right > left) 
-      {
-        vec3.scale(this.pheromoneSteerForce, rightDir, this.pheromoneWeight);
+      const total = center + left + right;
+      if (total > 0) {
+        // denser trails disproportionately
+        const cWeight = center * center;
+        const lWeight = left * left;
+        const rWeight = right * right;
+
+        vec3.set(this.pheromoneSteerForce, 0, 0, 0);
+        vec3.scaleAndAdd(this.pheromoneSteerForce, this.pheromoneSteerForce, currentForwardDir, cWeight);
+        vec3.scaleAndAdd(this.pheromoneSteerForce, this.pheromoneSteerForce, leftDir, lWeight);
+        vec3.scaleAndAdd(this.pheromoneSteerForce, this.pheromoneSteerForce, rightDir, rWeight);
+
+        if (vec3.squaredLength(this.pheromoneSteerForce) > 1e-6) {
+          vec3.normalize(this.pheromoneSteerForce, this.pheromoneSteerForce);
+
+          // force by how strong the trail actually is (weak trail = more wandering, strong trail = locked in)
+          const concentrationScale = Math.min(total, 5.0); // cap so it stays bounded
+          vec3.scale(this.pheromoneSteerForce, this.pheromoneSteerForce, this.pheromoneWeight * concentrationScale);
+          this.turnAroundTimer = 0;
+        }
       }
 		}  
   }
@@ -261,13 +297,16 @@ export default class AntGO extends GameObject {
     this.nextDirUpdateTime = 0;
     vec3.set(this.pheromoneSteerForce, 0, 0, 0);
     this.timeSinceSource = 0;
+    this.currentLifetime = 0;
     this.startTurnAround();
   }
 
   private switchToReturning(): void {
     this.state = AntState.Returning;
     this.timeSinceSource = 0;
+    vec3.set(this.pheromoneSteerForce, 0, 0, 0);
     this.nextDirUpdateTime = 0;
+    this.currentLifetime = 0;
     this.startTurnAround();
   }
 
@@ -306,8 +345,16 @@ export default class AntGO extends GameObject {
     vec3.add(steerForce, steerForce, this.pheromoneSteerForce);
 
     if (this.turnAroundTimer > 0) {
-      vec3.scaleAndAdd(steerForce, steerForce, this.turnAroundForce, 10.0);
-      this.turnAroundTimer -= dt;
+      const alignment = vec3.dot(this.forward, this.turnAroundForce);
+      // exit early if the ant is already facing the turnAroundForce direction
+      if (alignment > 0.8) {
+        this.turnAroundTimer = 0;
+      } else {
+        // Apply the turnAroundForce to the steerForce
+        const turnWeight = 6.0 * (this.turnAroundTimer / 1.5);
+        vec3.scaleAndAdd(steerForce, steerForce, this.turnAroundForce, turnWeight);
+        this.turnAroundTimer -= dt;
+      }
     }
 
     // Convert steerForce into desiredVelocity and smoothly accelerate toward it
@@ -359,6 +406,12 @@ export default class AntGO extends GameObject {
   }
 
   private handleRandomSteering(dt: number): void {
+    if (this.turnAroundTimer > 0) {
+      vec3.set(this.randomSteerForce, 0, 0, 0);
+      this.wanderTimer = 0;
+      return;
+    }
+
     this.wanderTimer -= dt;
     if (this.wanderTimer <= 0) {
       this.wanderTimer = randomFloat(0.3, 1.0);
@@ -385,3 +438,5 @@ export default class AntGO extends GameObject {
     return bestDir;
   }
 }
+
+

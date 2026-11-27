@@ -25,20 +25,14 @@ export default class SampleScene extends Scene {
 
     async setupScene(): Promise<void> {
         // Implementation for setting up the sample scene
-        const antImage = await Helpers.loadBitmap(antColorUrl);
-
-        const antMaterial = new TextureMaterial(
-            antImage,
-            toonShaderSource
-        );
 
         //const ball = new BallGO(vec3.fromValues(0, 0, 0));
         //ball.setMaterial(material);
 
-        const colony = new AntColonyGO(vec3.fromValues(0, 0, 0), antMaterial);
+        const colony = new AntColonyGO(vec3.fromValues(0, 0, 0));
         this.spawnObject(colony);
 
-        colony.spawnAnts(100);
+        colony.spawnAnts(400);
 
         // make plane
         const ground = new GroundGO(vec3.fromValues(0, 0, 0), vec2.fromValues(200, 200));
